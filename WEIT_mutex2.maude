@@ -1,3 +1,7 @@
+***(
+	This example includes the Maude code of the protocol specification, satisfaction verification module, and GSL semantics.
+)
+
 load symbolic-checker .
 
 set verbose on .
