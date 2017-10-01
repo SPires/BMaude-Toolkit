@@ -38,12 +38,6 @@ endfm)
 	eq false and G = false .
 endfm)
 
---------------------------------------------------------------------------------------
-(view Variable from TRIV to GSL-VARIABLE is
-	sort Elt to Variable .
-endv)
---------------------------------------------------------------------------------------
-
 (fmod GSL-PREDICATE is 
 	inc GBOOL . inc GSL-EXPRESSION .
 	inc GSL-VARIABLE .	
@@ -53,17 +47,28 @@ endv)
 	op _and_ : Predicate Predicate -> Predicate [assoc comm] .		
 	op _eq_ : Expression Expression -> Predicate [assoc comm] .
 	vars G1 G2 : GNat .
-	eq G1 eq G2 = if (G1 == G2) then true else false fi .
+	eq G1 eq G2 = if (G1 == G2) then (true) else (false) fi .
+	
 	--------------------------------------------------------------------------------------
-	inc LIST{Variable}*(op __ to _`,_ ) .
-	sort VariableSet .
-	subsort Variable < NeList{Variable} .
-	op `{_`} : NeList{Variable} -> VariableSet .
-	op _in_ : Variable VariableSet -> Predicate .
+	sorts VarList NatList .
+	subsort Variable < VarList .
+	subsort GNat < NatList .
+	op _`,_ : VarList VarList -> VarList [ctor assoc comm] .
+	op _`,_ : NatList NatList -> NatList [ctor assoc comm] .
+	op _in_ : Variable VarList -> Predicate .
+	op _in_ : GNat NatList -> Predicate .
+	ops x y z : -> Variable .
+	op toNat : Variable -> GNat .
+	
 	vars V1 V2 : Variable .
-	var VS : NeList{Variable} .
-	eq V1 in {V2} = if (V1 == V2) then true else false fi .
-	eq V1 in { V2, VS } = if (V1 == V2) then true else (V1 in {VS}) fi .
+	var VL : VarList .
+	var GL : NatList .
+	
+	eq V1 in V2 = if (V1 == V2) then true else false fi .
+	eq V1 in (V2 , VL) = if (V1 == V2) then true else false fi .
+	
+	eq G1 in G2 = if (G1 == G2) then true else false fi .
+	eq G1 in (G2 , GL) = if (G1 == G2) then true else false fi .
 	---------------------------------------------------------------------------------------
 endfm)
 
@@ -92,6 +97,9 @@ endfm)
 
 	--- Unbounded choice substitution
 	op @_._ : PlaceHolder Substitution -> UChoice [ctor] .
+	
+	--- Parallel composition
+	---op _||_ : 
 endfm)
 
 (fmod GSL-STORE is 
@@ -111,12 +119,6 @@ endfm)
 	eq (V |-> G)  (V |-> G)  S = (V |-> G)  S .
 endfm)
 
---------------------------------------------------------------------------------------
-(view Substitution from TRIV to GSL-SYNTAX is
-sort Elt to Substitution .
-endv)
---------------------------------------------------------------------------------------
-
 (mod GSL-SEMANTICS is
 	inc GSL-SYNTAX .
 	inc GSL-STORE .
@@ -134,14 +136,13 @@ endv)
 	op _`[_/_`] : Predicate GBool PlaceHolder -> Predicate .
 	op _`[_/_`] : Substitution GNat PlaceHolder -> Substitution .
 	op _`[_/_`] : Substitution GBool PlaceHolder -> Substitution .
-	--------------------------------------------------------------------------------------
 	op _`[_/_`] : Expression Variable PlaceHolder -> Expression .	
 	op _`[_/_`] : Predicate Variable PlaceHolder -> Predicate .	
 	op _`[_/_`] : Substitution Variable PlaceHolder -> Substitution .
-	--------------------------------------------------------------------------------------	
 
 	var V V1 V2 : Variable . vars E E1 E2 : Expression . var STO STO' : Store . vars G G1 G2 : GNat .
 	var P : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . var B B1 B2 : GBool .
+	var NL : NatList .
 	
 ***(-----------------------------------------------------------------------------------	
 	inc LIST{Substitution} .
@@ -161,6 +162,7 @@ endv)
 
 	eq [pre1] : ((P | S) , STO) = (P , (P | S) , STO) [variant] .
 	eq [pre2] : (V1 eq E, (P | S) , ((V1 |-> G) STO)) = (G eq E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((toNat(V1) in NL), (P | S) , ((V1 |-> G) STO)) = ((G in NL), (P | S) , ((V1 |-> G) STO)) [variant] .
 	eq [pre3] : (true, (P | S) , STO) = (S , STO) [variant] .
 	eq [pre4] : (false, (P | S) , STO) = abort [variant] .
 
@@ -168,14 +170,13 @@ endv)
 
 	eq [guard1] : (P ==> S , STO) = (P , (P ==> S) , STO) [variant] .
 	eq [guard2] : ((V1 eq E), (P ==> S) , ((V1 |-> G) STO)) = ((G eq E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((toNat(V1) in NL), (P ==> S) , ((V1 |-> G) STO)) = ((G in NL), (P ==> S) , ((V1 |-> G) STO)) [variant] .
 	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
 	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .
----***(
+
 	rl [uchoice] : (@ PH . S), STO => (S [ G / PH ]), STO [nonexec] .
 	rl [uchoice] : (@ PH . S), STO => (S [ B / PH ]), STO [nonexec] .
-	--------------------------------------------------------------------------------------
 	rl [uchoice] : (@ PH . S), STO => (S [ V / PH ]), STO [nonexec] .
-	--------------------------------------------------------------------------------------  	
 	
 	--- Equations for _[_/_]
 	--- We assume that alpha-renaming has been performed.
@@ -193,7 +194,7 @@ endv)
 	eq [repl-ph-gbool] : PH [ B / PH ] = B .
 	eq [repl-and] : (PH and P) [ B / PH ] = B and (P [ B / PH]) .
 	eq [repl-ph-sum] : (PH + E) [ G / PH ] = G + (E [ G / PH ]) .
-	--------------------------------------------------------------------------------------Revisar aqui
+	-------------------------------------------------------------------------------------- REVISAR AS REGRAS ABAIXO
 	eq [repl-gnat] : G [ V / PH ] = G .	
 	eq [repl-gbool2] : B [ V / PH ] = B .	
 	eq [repl-variable] : V [ B / PH ] = if (PH == V) then (B) else (V) fi .			
@@ -204,7 +205,8 @@ endv)
 	eq [repl-prec-subst] : (P | S) [ V / PH ] = ((P [ V / PH ]) | (S [ V / PH])) .			
 	eq [repl-ph-gbool] : PH [ V / PH ] = V .	
 	eq [repl-ph-sum] : (PH + E) [ V / PH ] = V + (E [ V / PH ]) .	
-	eq [repl-ph-in] : (PH in VS:VariableSet) [ V / PH ] = V in VS:VariableSet .
+	eq [repl-ph-in] : (PH in VS:VarList) [ V / PH ] = V in VS:VarList .	
+	eq [repl-ph-in] : (toNat(PH) in GL:NatList) [ G / PH ] = G in GL:NatList .
 	--------------------------------------------------------------------------------------)
 endm)
 
@@ -232,19 +234,54 @@ endm)
 	eq CHOICE SS END = SS .
 	eq S OR T = S [] T .	
 	eq S OR (T OR SS) = S [] (T OR SS) .
-	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .	
+	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .
+	
+	op _:_E_ : Variable PlaceHolder VarList -> Substitution .
+	op _:_E_ : Variable PlaceHolder NatList -> Substitution .
+	
+	eq V:Variable : X E VL:VarList = ANY X WHERE (X in VL:VarList) THEN (V:Variable := X) END .
+	eq V:Variable : X E NL:NatList = ANY X WHERE (placeToNat(X) in NL:NatList) THEN (V:Variable := X) END .
 endm)
+
+***(mod test is
+	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
+	op heyBitch : NatList -> Substitution .
+	op output : -> Variable .
+	op ph : -> PlaceHolder .
+
+	eq heyBitch(K:NatList) = output : ph E K:NatList .
+endm)
+
+***(mod test-sat is
+	inc test .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	ops isOne? isTwo? isThree? : -> Prop .
+	
+	var S : Substitution .
+	var G : GNat .
+	
+	eq S, (output |-> G) STO:Store |= isOne? = if (G == s(0)) then true else false fi [variant] .
+	eq S, (output |-> G) STO:Store |= isTwo? = if (G == s(s(0))) then true else false fi [variant] .
+	eq S, (output |-> G) STO:Store |= isThree? = if (G == s(s(s(0)))) then true else false fi [variant] .
+endm)
+
+***(lmc heyBitch( s(0) , s(s(0)) ), (output |-> s(0)) |= <> (isOne?) .)
+
+***(lmc heyBitch( s(0) , s(s(0)) ), STO:Store |= ((isOne?) \/ (isTwo?)) .)
+
+***(lmc heyBitch( s(0) , s(s(0)) ), STO:Store |= <> (isThree?) .)
 
 (mod GSL-PROTOCOL is
 	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
-	op protocol : VariableSet -> Substitution .
+	op protocol : VarList -> Substitution .
 	op process : -> PlaceHolder .
 	ops crit stateP1 stateP2 stateP3 stateP4 stateP5 : -> Variable .
-	var VS : VariableSet .
+	var VS : VarList .
 	eq protocol(VS) =
 	BEGIN
 		ANY process
-		WHERE process in VS
+		WHERE (process in VS)
 		THEN
 			PRE (process eq 0) THEN (process := s(0)) END
 			OR
@@ -287,14 +324,14 @@ endm)
 	eq S , (stateP5 |-> N) STO:Store |= critP5? = if (N == s(s(0))) then (true) else (false) fi [variant] .
 endm)
 
-(lmc protocol({stateP1, stateP2}), STO:Store |= <> (critP4?) .)
+(lmc protocol(stateP1, stateP2), STO:Store |= <> (critP4?) .)
 
-(lmc protocol({stateP1, stateP2}), STO:Store |= [] ~(critP1? /\ critP2?) .)
+(lmc protocol(stateP1, stateP2), STO:Store |= [] ~(critP1? /\ critP2?) .)
 
-(lmc protocol({stateP1, stateP2}), STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?)) .)
+(lmc protocol(stateP1, stateP2), STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?)) .)
 
-(lmc protocol({stateP1, stateP2, stateP3}), STO:Store |= [] ~((critP1? /\ critP2?) \/ (critP1? /\ critP3?) \/ (critP2? /\ critP3?)) .)
-
+(lmc protocol(stateP1, stateP2, stateP3), STO:Store |= [] ~((critP1? /\ critP2?) \/ (critP1? /\ critP3?) \/ (critP2? /\ critP3?)) .)
+eof
 (lmc protocol({stateP1, stateP2, stateP3}), STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?) \/ (waitP3? -> <> critP3?)) .)
 
 (lmc protocol({stateP1, stateP2, stateP3, stateP4}), STO:Store |= [] ~((critP1? /\ critP2?) \/ (critP1? /\ critP3?) \/ (critP1? /\ critP4?) \/ (critP2? /\ critP3?) \/ (critP2? /\ critP4?) \/ (critP3? /\ critP4?)) .)
