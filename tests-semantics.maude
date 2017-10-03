@@ -144,17 +144,6 @@ endfm)
 	var P : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . var B B1 B2 : GBool .
 	var NL : NatList .
 	
-***(-----------------------------------------------------------------------------------	
-	inc LIST{Substitution} .
-	op _`,_`,_ : List{Substitution} Substitution Store -> Conf [frozen] .
-	op _||_ : Substitution Substitution -> Substitution [id: skip] .
-	op `[_/_`] : Expression Variable -> Substitution .
-	var SL : List{Substitution} .
-	eq [paralel1] : (((V := G) || S) , STO) = (([G / V]) , (S) , (STO)) [variant] .
-	eq [paralel1] : (((V := V1) || S) , ((V1 |-> G) STO)) = (([G / V]) , (S) , (STO)) [variant] .
-	eq [paralel2] : ((SL) , (((V := G) || S)) , (STO)) = (( SL [G / V] ) , (S) , (STO)) [variant] .
-	--------------------------------------------------------------------------------------)
-	
 	eq [simple1] : ((V := E) , STO) = (E, (V := E) , STO)  [variant] .
 	eq [simple2] : (V1, (V2 := E) , ((V1 |-> G) STO)) = (G, (V2 := E) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (V1 + E1, (V2 := E2) , ((V1 |-> G) STO)) = (G + E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
@@ -242,35 +231,6 @@ endm)
 	eq V:Variable : X E VL:VarList = ANY X WHERE (X in VL:VarList) THEN (V:Variable := X) END .
 	eq V:Variable : X E NL:NatList = ANY X WHERE (placeToNat(X) in NL:NatList) THEN (V:Variable := X) END .
 endm)
-
-***(mod test is
-	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
-	op heyBitch : NatList -> Substitution .
-	op output : -> Variable .
-	op ph : -> PlaceHolder .
-
-	eq heyBitch(K:NatList) = output : ph E K:NatList .
-endm)
-
-***(mod test-sat is
-	inc test .
-	inc SYMBOLIC-CHECKER .
-	subsort Conf < State .
-	ops isOne? isTwo? isThree? : -> Prop .
-	
-	var S : Substitution .
-	var G : GNat .
-	
-	eq S, (output |-> G) STO:Store |= isOne? = if (G == s(0)) then true else false fi [variant] .
-	eq S, (output |-> G) STO:Store |= isTwo? = if (G == s(s(0))) then true else false fi [variant] .
-	eq S, (output |-> G) STO:Store |= isThree? = if (G == s(s(s(0)))) then true else false fi [variant] .
-endm)
-
-***(lmc heyBitch( s(0) , s(s(0)) ), (output |-> s(0)) |= <> (isOne?) .)
-
-***(lmc heyBitch( s(0) , s(s(0)) ), STO:Store |= ((isOne?) \/ (isTwo?)) .)
-
-***(lmc heyBitch( s(0) , s(s(0)) ), STO:Store |= <> (isThree?) .)
 
 (mod GSL-PROTOCOL is
 	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
