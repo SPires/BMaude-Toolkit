@@ -78,6 +78,12 @@ endfm)
 
 	--- Unbounded choice substitution
 	op @_._ : PlaceHolder Substitution -> UChoice [ctor] .
+	
+	--- Loop Substitution
+	op _^ : Substitution -> Substitution [ctor] .
+	
+	--- Sequential composition
+	op _;_ : Substitution Substitution -> Substitution [ctor id: skip] .
 endfm)
 
 (fmod GSL-STORE is 
@@ -117,8 +123,8 @@ endfm)
 
 	var V V1 V2 : Variable . vars E E1 E2 : Expression . var STO STO' : Store . vars G G1 G2 : GNat .
 	var P : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . var B B1 B2 : GBool .
-	
-	eq [simple1] : ((V := E) , STO) = (E, (V := E) , STO)  [variant] .
+		
+***(	eq [simple1] : ((V := E) , STO) = (E, (V := E) , STO)  [variant] .
 	eq [simple2] : (V1, (V2 := E) , ((V1 |-> G) STO)) = (G, (V2 := E) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (V1 + E1, (V2 := E2) , ((V1 |-> G) STO)) = (G + E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
@@ -132,6 +138,30 @@ endfm)
 
 	eq [guard1] : (P ==> S , STO) = (P , (P ==> S) , STO) [variant] .
 	eq [guard2] : ((V1 eq E), (P ==> S) , ((V1 |-> G) STO)) = ((G eq E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
+	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .)
+	
+	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
+	eq [simple2] : (V1, ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (V1 + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (G1, ((V := E) ; S) , ((V |-> G2) STO)) = (S , ((V |-> G1) STO)) [variant] .
+	eq [simple2] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
+
+	eq [pre1] : (((P | S) ; S1) , STO) = (P , ((P | S) ; S1) , STO) [variant] .
+	eq [pre2] : (V1 eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) = (G eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre3] : (true, ((P | S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [pre4] : (false, ((P | S) ; S1) , STO) = (S1 , STO) [variant] .
+	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
+	eq [pre4] : (false, P | S , STO) = abort [variant] .
+
+	rl [bchoice] : S1 [] S2 => S1 .
+	
+	eq [loop] : (S)^ = (S ; (S)^) [] skip [variant] .
+
+	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
+	eq [guard2] : ((V1 eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard3] : (true, ((P ==> S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [guard4] : (false, ((P ==> S) ; S1) , STO) = (S1, STO) [variant] .
 	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
 	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .
 
@@ -154,6 +184,8 @@ endfm)
 	eq [repl-ph-gbool] : PH [ B / PH ] = B .
 	eq [repl-and] : (PH and P) [ B / PH ] = B and (P [ B / PH]) .
 	eq [repl-ph-sum] : (PH + E) [ G / PH ] = G + (E [ G / PH ]) .
+	eq [repl-seq-comp] : (S1 ; S2) [ G / PH] = (S1 [ G / PH]) ; (S2 [ G / PH] ) .
+	eq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH] ) .
 endm)
 
 (mod SIMPLIFIED-ABSTRACT-MACHINE-NOTATION is
@@ -169,6 +201,7 @@ endm)
 	op _OR_ : NeSubstitutionSet NeSubstitutionSet -> NeSubstitutionSet [assoc comm] .
 	op CHOICE_END : NeSubstitutionSet -> Substitution .
 	op ANY_WHERE_THEN_END : PlaceHolder Predicate Substitution -> Substitution .
+	op WHILE_DO_END : Predicate Substitution -> Substitution .
 
 	vars S T : Substitution . var SS : NeSubstitutionSet . var P : Predicate . var X : PlaceHolder .
 
@@ -180,7 +213,8 @@ endm)
 	eq CHOICE SS END = SS .
 	eq S OR T = S [] T .	
 	eq S OR (T OR SS) = S [] (T OR SS) .
-	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .	
+	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .
+	eq WHILE P DO S END = ((P ==> S)^);(neg(P) ==> skip) .	
 endm)
 
 (mod GSL-PROTOCOL-MUTEX is
@@ -188,7 +222,7 @@ endm)
  	sorts Protocol StateProcess .
  	subsort Protocol < Substitution . subsort StateProcess < Variable .
  	
-	op protocolMutex : -> Protocol .
+	ops protocolMutex loopProt : -> Protocol .
  	ops stateP1 stateP2 : -> StateProcess .
  	
 	eq protocolMutex =
@@ -209,6 +243,27 @@ endm)
  	 			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
  		   END
  		END .
+		
+		eq loopProt =
+	 		BEGIN
+			WHILE (true) DO (
+	 	   		CHOICE
+	 		   		PRE (stateP1 eq 0) THEN (stateP1 := s(0)) END
+	 				OR
+	 				PRE (stateP2 eq 0) THEN (stateP2 := s(0)) END
+	 				OR
+	 				PRE ((stateP1 eq s(0)) and (neg(stateP2 eq s(s(0)))))
+	 					THEN (stateP1 := s(s(0))) END
+	 				OR
+	 			   	PRE ((stateP2 eq s(0)) and (neg(stateP1 eq s(s(0)))))
+	 			   		THEN (stateP2 := s(s(0))) END
+	 				OR
+	 			   	PRE (stateP1 eq s(s(0))) THEN (stateP1 := 0) END
+	 	  		  	OR
+	 	 			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
+	 		   END )
+			   END
+	 		END .
 endm)
 
 (mod GSL-MUTEX-SATISFACTION is
@@ -242,4 +297,12 @@ endm)
 
 (lmc protocolMutex, STO:Store |= []~(critP1? /\ critP2?) .)
 
-(lmc protocolMutex,STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?)) .)
+(lmc loopProt, STO:Store |= []~(critP1? /\ critP2?) .)
+
+--- (lmc protocolMutex,STO:Store |= [] ((waitP1? -> <> critP1?)) .)
+
+---(lmc protocolMutex, ((stateP1 |-> 0) (stateP2 |-> 0)) |= [] ((waitP1? -> <> critP1?)) .)
+
+---(lmc protocolMutex,STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?)) .)
+
+---(lmc protocolMutex,STO:Store |= (([] waitP1? -> <> critP1?) /\ ([] waitP2? -> <> critP2?)) .)
