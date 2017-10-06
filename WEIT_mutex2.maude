@@ -83,7 +83,7 @@ endfm)
 	op _^ : Substitution -> Substitution [ctor] .
 	
 	--- Sequential composition
-	op _;_ : Substitution Substitution -> Substitution [ctor id: skip] .
+	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor id: skip] .
 endfm)
 
 (fmod GSL-STORE is 
@@ -123,23 +123,6 @@ endfm)
 
 	var V V1 V2 : Variable . vars E E1 E2 : Expression . var STO STO' : Store . vars G G1 G2 : GNat .
 	var P : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . var B B1 B2 : GBool .
-		
-***(	eq [simple1] : ((V := E) , STO) = (E, (V := E) , STO)  [variant] .
-	eq [simple2] : (V1, (V2 := E) , ((V1 |-> G) STO)) = (G, (V2 := E) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (V1 + E1, (V2 := E2) , ((V1 |-> G) STO)) = (G + E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
-
-	eq [pre1] : (P | S , STO) = (P , P | S , STO) [variant] .
-	eq [pre2] : (V1 eq E, (P | S) , ((V1 |-> G) STO)) = (G eq E, (P | S) , ((V1 |-> G) STO)) [variant] .
-	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
-	eq [pre4] : (false, P | S , STO) = abort [variant] .
-
-	rl [bchoice] : S1 [] S2 => S1 .
-
-	eq [guard1] : (P ==> S , STO) = (P , (P ==> S) , STO) [variant] .
-	eq [guard2] : ((V1 eq E), (P ==> S) , ((V1 |-> G) STO)) = ((G eq E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
-	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
-	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .)
 	
 	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
 	eq [simple2] : (V1, ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
@@ -156,7 +139,7 @@ endfm)
 
 	rl [bchoice] : S1 [] S2 => S1 .
 	
-	eq [loop] : (S)^ = (S ; S) [] skip .
+	eq [loop] : (S)^ = (S ; (S)^) [] skip .
 
 	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
 	eq [guard2] : ((V1 eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
@@ -248,7 +231,7 @@ endm)
 		   	PRE (stateP1 eq s(s(0))) THEN (stateP1 := 0) END
   		  	OR
  			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
-	   END ) END)
+	   END ) END )
 	   END .
 endm)
 
@@ -281,15 +264,8 @@ endm)
 		if (N == s(s(0))) then (true) else (false) fi [variant] .
 endm)
 
---- Property verification of our simple mutual exclusion protocol.
-
---- Safety property (mutual exclusion)
---- Unbounded verification
---- True (complete with depth 5)
+--- Safety property verification
 (lmc protocolMutex, STO:Store |= []~(critP1? /\ critP2?) .)
 
-
---- Liveness property
---- Unbounded verification
---- True (complete with depth 5)
-(lmc protocolMutex,STO:Store |= (([] waitP1? -> <> critP1?) /\ ([] waitP2? -> <> critP2?)) .)
+--- Liveness property verification
+(lmc protocolMutex, STO:Store |= (([] waitP1? -> <> critP1?) /\ ([] waitP2? -> <> critP2?)) .)
