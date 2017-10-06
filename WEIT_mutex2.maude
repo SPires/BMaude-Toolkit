@@ -156,7 +156,7 @@ endfm)
 
 	rl [bchoice] : S1 [] S2 => S1 .
 	
-	eq [loop] : (S)^ = (S ; (S)^) [] skip [variant] .
+	eq [loop] : (S)^ = (S ; S) [] skip .
 
 	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
 	eq [guard2] : ((V1 eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
@@ -222,48 +222,34 @@ endm)
  	sorts Protocol StateProcess .
  	subsort Protocol < Substitution . subsort StateProcess < Variable .
  	
-	ops protocolMutex loopProt : -> Protocol .
+	op protocolMutex : -> Protocol .
  	ops stateP1 stateP2 : -> StateProcess .
- 	
+	
 	eq protocolMutex =
  		BEGIN
- 	   		CHOICE
- 		   		PRE (stateP1 eq 0) THEN (stateP1 := s(0)) END
- 				OR
- 				PRE (stateP2 eq 0) THEN (stateP2 := s(0)) END
- 				OR
- 				PRE ((stateP1 eq s(0)) and (neg(stateP2 eq s(s(0)))))
- 					THEN (stateP1 := s(s(0))) END
- 				OR
- 			   	PRE ((stateP2 eq s(0)) and (neg(stateP1 eq s(s(0)))))
- 			   		THEN (stateP2 := s(s(0))) END
- 				OR
- 			   	PRE (stateP1 eq s(s(0))) THEN (stateP1 := 0) END
- 	  		  	OR
- 	 			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
- 		   END
- 		END .
-		
-		eq loopProt =
-	 		BEGIN
-			WHILE (true) DO (
-	 	   		CHOICE
-	 		   		PRE (stateP1 eq 0) THEN (stateP1 := s(0)) END
-	 				OR
-	 				PRE (stateP2 eq 0) THEN (stateP2 := s(0)) END
-	 				OR
-	 				PRE ((stateP1 eq s(0)) and (neg(stateP2 eq s(s(0)))))
-	 					THEN (stateP1 := s(s(0))) END
-	 				OR
-	 			   	PRE ((stateP2 eq s(0)) and (neg(stateP1 eq s(s(0)))))
-	 			   		THEN (stateP2 := s(s(0))) END
-	 				OR
-	 			   	PRE (stateP1 eq s(s(0))) THEN (stateP1 := 0) END
-	 	  		  	OR
-	 	 			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
-	 		   END )
-			   END
-	 		END .
+		(WHILE (true) DO (
+   		CHOICE
+	   		PRE (stateP1 eq 0) THEN (stateP1 := s(0)) END
+			OR
+			PRE (stateP2 eq 0) THEN (stateP2 := s(0)) END
+			OR
+			PRE ((stateP1 eq s(0)) and (stateP2 eq 0))
+				THEN (stateP1 := s(s(0))) END
+			OR
+			PRE ((stateP1 eq s(0)) and (stateP2 eq 0))
+				THEN ((stateP1 := s(s(0))) ; (stateP2 := s(0))) END
+			OR
+		   	PRE ((stateP2 eq s(0)) and (stateP1 eq 0))
+		   		THEN (stateP2 := s(s(0))) END
+			OR
+		   	PRE ((stateP2 eq s(0)) and (stateP1 eq 0))
+		   		THEN ((stateP2 := s(s(0))) ; (stateP1 := s(0))) END
+			OR
+		   	PRE (stateP1 eq s(s(0))) THEN (stateP1 := 0) END
+  		  	OR
+ 			PRE (stateP2 eq s(s(0))) THEN (stateP2 := 0) END
+	   END ) END)
+	   END .
 endm)
 
 (mod GSL-MUTEX-SATISFACTION is
@@ -295,14 +281,15 @@ endm)
 		if (N == s(s(0))) then (true) else (false) fi [variant] .
 endm)
 
+--- Property verification of our simple mutual exclusion protocol.
+
+--- Safety property (mutual exclusion)
+--- Unbounded verification
+--- True (complete with depth 5)
 (lmc protocolMutex, STO:Store |= []~(critP1? /\ critP2?) .)
 
-(lmc loopProt, STO:Store |= []~(critP1? /\ critP2?) .)
 
---- (lmc protocolMutex,STO:Store |= [] ((waitP1? -> <> critP1?)) .)
-
----(lmc protocolMutex, ((stateP1 |-> 0) (stateP2 |-> 0)) |= [] ((waitP1? -> <> critP1?)) .)
-
----(lmc protocolMutex,STO:Store |= [] ((waitP1? -> <> critP1?) \/ (waitP2? -> <> critP2?)) .)
-
----(lmc protocolMutex,STO:Store |= (([] waitP1? -> <> critP1?) /\ ([] waitP2? -> <> critP2?)) .)
+--- Liveness property
+--- Unbounded verification
+--- True (complete with depth 5)
+(lmc protocolMutex,STO:Store |= (([] waitP1? -> <> critP1?) /\ ([] waitP2? -> <> critP2?)) .)
