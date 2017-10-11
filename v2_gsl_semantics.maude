@@ -195,3 +195,51 @@ endm)
 	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .
 	eq WHILE P DO S END = ((P ==> S)^);(neg(P) ==> skip) .	
 endm)
+
+(mod AMN-PARAMETERIZED-STRUCTURE is
+	inc GSL-VARIABLE .
+	inc GSL-PREDICATE .
+	inc GNAT .
+	inc BOOL .
+
+	sorts IndexedElement IndexedSet .
+	subsort IndexedElement < IndexedSet .
+
+	op empIS : -> IndexedSet [ctor] .
+	op _`,_ : GNat Variable -> IndexedElement [ctor] .
+	op _`,_ : IndexedSet IndexedSet -> IndexedSet [ctor assoc comm id: empIS] .
+	op insert : IndexedElement IndexedSet -> IndexedSet .
+	op remove : IndexedElement IndexedSet -> IndexedSet .
+	op element : GNat IndexedSet -> Variable .
+	op lenght : IndexedSet -> GNat .
+	op bigOr : PlaceHolder IndexedSet -> Predicate .
+	op existIndex : GNat IndexedSet -> Bool .
+	op existElement : Variable IndexedSet -> Bool .
+
+	var E : IndexedElement .
+	var A : IndexedSet .
+	var G : GNat .
+	var V : Variable .
+	var P : PlaceHolder .
+
+	eq existIndex(G,((G,V),A)) = true .
+	eq existIndex(G,A) = false [owise] .
+	
+	eq existElement(V,((G,V),A)) = true .
+	eq existElement(V,A) = false [owise] .
+
+	eq insert((G,V),A) = 
+	if (not(existIndex(G,A)) and not(existElement(V,A))) 
+	then ((A,(G,V))) else (A) fi .
+	
+	eq remove(E,(E,A)) = A .
+	eq remove(E,A) = A [owise] .
+	
+	eq lenght(empIS) = 0 .
+	eq lenght((E,A1)) = s(0) + lenght(A1) .
+	
+	eq element(G,((G,V),A)) = V .
+	
+	eq bigOr(P,(G,V)) = (P eq G) .
+	eq bigOr(P,((G,V),A)) = (P eq G) or bigOr(P,A) .
+endm)
