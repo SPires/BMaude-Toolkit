@@ -236,7 +236,7 @@ endm)
 	eq remove(E,A) = A [owise] .
 	
 	eq lenght(empIS) = 0 .
-	eq lenght((E,A1)) = s(0) + lenght(A1) .
+	eq lenght((E,A)) = s(0) + lenght(A) .
 	
 	eq element(G,((G,V),A)) = V .
 	
