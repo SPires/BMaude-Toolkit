@@ -1,3 +1,5 @@
+load symbolic-checker
+
 (fmod GSL-VARIABLE is
 	sort Variable PlaceHolder .
 endfm)
