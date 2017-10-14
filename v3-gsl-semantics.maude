@@ -1,0 +1,245 @@
+load symbolic-checker .
+
+set verbose on .
+
+(fmod GSL-VARIABLE is
+	sort Variable PlaceHolder .
+endfm)
+
+(fmod GNAT is 
+	sort GNat .
+	op 0 : -> GNat .
+	op s : GNat -> GNat .
+	op _+_ : GNat GNat -> GNat [assoc comm] .
+	vars G G1 G2 : GNat .
+	eq 0 + G = G .
+	eq G1 + s(G2) = s(G1 + G2) .
+endfm)
+
+(fmod GSL-EXPRESSION is
+	inc GNAT .
+	inc GSL-VARIABLE .
+	sort Expression .
+	subsort GNat PlaceHolder Variable < Expression .
+	subsort PlaceHolder < Expression .
+	op _+_ : Expression Expression -> Expression [assoc comm] .	
+endfm)
+
+(fmod GBOOL is
+	sort GBool .
+	ops true false : -> GBool .
+	op neg : GBool -> GBool .
+	op _and_ : GBool GBool -> GBool [assoc comm] .
+	op _or_ : GBool GBool -> GBool [assoc comm] .
+	vars G G1 G2 : GBool .
+	eq neg(true) = false .
+	eq neg(false) = true .
+	eq true and G = G .
+	eq false and G = false .
+	eq true or G = true .
+	eq false or G = G .
+endfm)
+
+(fmod GSL-PREDICATE is 
+	inc GBOOL . inc GSL-EXPRESSION .
+	inc GSL-VARIABLE .	
+	sort Predicate .
+	subsort GBool PlaceHolder < Predicate < Expression .
+	op neg : Predicate -> Predicate .
+	op _and_ : Predicate Predicate -> Predicate [assoc comm] .
+	op _or_ : Predicate Predicate -> Predicate [assoc comm] .		
+	op _eq_ : Expression Expression -> Predicate [assoc comm] .
+	vars G1 G2 : GNat .
+	eq G1 eq G2 = if (G1 == G2) then true else false fi .
+	
+endfm)
+
+(mod GSL-PARAMETERIZED-STRUCTURE is
+	inc GSL-VARIABLE .
+	inc GSL-PREDICATE .
+	inc GNAT .
+	inc BOOL .
+
+	sorts IndexedElement IndexedSet .
+	subsort IndexedElement < IndexedSet .
+
+	op empIS : -> IndexedSet [ctor] .
+	op _`,_ : GNat Variable -> IndexedElement [ctor] .
+	op _`,_`,_ : GNat Variable Variable -> IndexedElement [ctor] .
+	op _`,_ : IndexedSet IndexedSet -> IndexedSet [ctor assoc comm id: empIS] .
+	op element : GNat IndexedSet -> Variable .
+	ops elementOne elementTwo : GNat IndexedSet -> Variable .
+	op bigOr : PlaceHolder IndexedSet -> Predicate .
+	op phToGNat : PlaceHolder -> GNat .
+
+	var A : IndexedSet .
+	var G : GNat .
+	vars V V1 V2 : Variable .
+	var P : PlaceHolder .
+
+	eq element(G,((G,V),A)) = V .
+	eq elementOne(G,((G,V1,V2),A)) = V1 .
+	eq elementTwo(G,((G,V1,V2),A)) = V2 .
+	
+	eq bigOr(P,(G,V)) = (P eq G) .
+	eq bigOr(P,((G,V),A)) = (P eq G) or bigOr(P,A) .
+	eq bigOr(P,(G,V1,V2)) = (P eq G) .
+	eq bigOr(P,((G,V1,V2),A)) = (P eq G) or bigOr(P,A) .
+endm)
+
+(fmod GSL-SYNTAX is
+	inc GSL-EXPRESSION . 
+	inc GSL-PREDICATE .
+	
+	sort Substitution UChoice .
+	subsort Variable < Expression Predicate .
+	subsort UChoice < Substitution .
+	
+	--- Simple substitution
+	op _:=_ : Variable Expression -> Substitution [ctor] .
+
+	--- "Does nothing" substitution
+	op skip : -> Substitution [ctor] .
+
+	--- Pre-condition substitution
+	op _|_ : Predicate Substitution -> Substitution [ctor] .
+
+	--- Bounded choice substitution
+	op _`[`]_ : Substitution Substitution -> Substitution [assoc comm ctor] .
+
+	--- Guarded substitution
+	op _==>_ : Predicate Substitution -> Substitution [ctor] .
+
+	--- Unbounded choice substitution
+	op @_._ : PlaceHolder Substitution -> UChoice [ctor] .
+	
+	--- Loop Substitution
+	op _^ : Substitution -> Substitution [ctor] .
+	
+	--- Sequential composition
+	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor id: skip] .
+endfm)
+
+(fmod GSL-STORE is 
+	inc GSL-VARIABLE .
+	inc GNAT .
+	
+	sorts Cell Store .
+	subsort Cell < Store .
+	
+	op _|->_ : Variable GNat -> Cell .
+
+	op empty : -> Store .
+	op __ : Store Store -> Store [assoc comm id: empty] .
+
+	var V : Variable . var G : GNat . var S : Store .
+
+	eq (V |-> G)  (V |-> G)  S = (V |-> G)  S .
+endfm)
+
+(mod GSL-SEMANTICS is
+	inc GSL-SYNTAX .
+	inc GSL-STORE .
+	inc GSL-PARAMETERIZED-STRUCTURE .
+	
+	sort Conf .
+
+	op abort : -> Conf .
+	
+	op _`,_ : Substitution Store -> Conf .
+	op _`,_`,_ : Predicate Substitution Store -> Conf [frozen] .
+	op _`,_`,_ : Expression Substitution Store -> Conf [frozen] .
+	op _`[_/_`] : Expression GNat PlaceHolder -> Expression .
+	op _`[_/_`] : Expression GBool PlaceHolder -> Expression .
+	op _`[_/_`] : Predicate GNat PlaceHolder -> Predicate .
+	op _`[_/_`] : Predicate GBool PlaceHolder -> Predicate .
+	op _`[_/_`] : Substitution GNat PlaceHolder -> Substitution .
+	op _`[_/_`] : Substitution GBool PlaceHolder -> Substitution .		
+
+	vars V V1 V2 : Variable . vars E E1 E2 : Expression . vars STO STO' : Store . vars G G1 G2 : GNat .
+	vars P P1 P2 : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . vars B B1 B2 : GBool .
+	
+	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
+	eq [simple2] : (V1, ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (V1 + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (G1, ((V := E) ; S) , ((V |-> G2) STO)) = (S , ((V |-> G1) STO)) [variant] .
+	eq [simple2] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
+
+	eq [pre1] : (((P | S) ; S1) , STO) = (P , ((P | S) ; S1) , STO) [variant] .
+	eq [pre2] : (V1 eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) = (G eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre3] : (true, ((P | S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [pre4] : (false, ((P | S) ; S1) , STO) = (S1 , STO) [variant] .
+	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
+	eq [pre4] : (false, P | S , STO) = abort [variant] .
+
+	rl [bchoice] : S1 [] S2 => S1 .
+	
+	eq [loop] : (S)^ = (S ; (S)^) [] skip .
+
+	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
+	eq [guard2] : ((V1 eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard3] : (true, ((P ==> S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [guard4] : (false, ((P ==> S) ; S1) , STO) = (S1, STO) [variant] .
+	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
+	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .
+
+	rl [uchoice] : (@ PH . S), STO => (S [ G / PH ]), STO [nonexec] .
+	rl [uchoice] : (@ PH . S), STO => (S [ B / PH ]), STO [nonexec] .
+	
+	--- Equations for _[_/_]
+	--- We assume that alpha-renaming has been performed.
+	eq [repl-gnat] : G1 [ G2 / PH ] = G1 .
+	eq [repl-gnat] : G [ B / PH ] = B .
+	eq [repl-gbool1] : B1 [ B2 / PH ] = B1 .
+	eq [repl-gbool2] : B [ G / PH ] = B .	
+	eq [repl-simple] : (V := E) [ G / PH ] = V := ( E [ G / PH ] ) .
+	eq [repl-simple] : (V := E) [ B / PH ] = V := ( E [ B / PH ] ) .	
+	eq [repl-guarded-subst] : (P ==> S) [ G / PH ] = ((P [ G / PH ]) ==> (S [ G / PH])) .
+	eq [repl-guarded-subst] : (P ==> S) [ B / PH ] = ((P [ B / PH ]) ==> (S [ B / PH])) .	
+	eq [repl-guarded-subst] : (P | S) [ G / PH ] = ((P [ G / PH ]) | (S [ G / PH])) .
+	eq [repl-guarded-subst] : (P | S) [ B / PH ] = ((P [ B / PH ]) | (S [ B / PH])) .	
+	eq [repl-ph-gnat] : PH [ G / PH ] = G .
+	eq [repl-ph-gbool] : PH [ B / PH ] = B .
+	eq [repl-and] : (PH and P) [ B / PH ] = B and (P [ B / PH]) .
+	eq [repl-and] : (P1 and P2) [ G / PH ] = (P1 [ G / PH]) and (P2 [ G / PH]) .
+	eq [repl-or] : (PH or P) [ B / PH ] = B or (P [ B / PH]) .
+	eq [repl-or] : (P1 or P2) [ G / PH ] = (P1 [ G / PH]) or (P2 [ G / PH]) .
+	eq [repl-equals] : (PH eq E) [ G / PH ] = G eq E .
+	eq [repl-ph-sum] : (PH + E) [ G / PH ] = G + (E [ G / PH ]) .
+	eq [repl-seq-comp] : (S1 ; S2) [ G / PH] = (S1 [ G / PH]) ; (S2 [ G / PH]) .
+	eq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) .
+	eq [repl-while] : (S)^ [ G / PH] = (S)^ .
+	eq [repl-while] : (S)^ [ B / PH] = (S)^ .
+	eq [repl-element] : (element(phToGNat(PH),I:IndexedSet) [ G / PH ]) = element(G,I:IndexedSet) .
+	eq [repl-element-1] : (elementOne(phToGNat(PH),I:IndexedSet) [ G / PH ]) = elementOne(G,I:IndexedSet) .
+	eq [repl-element-2] : (elementTwo(phToGNat(PH),I:IndexedSet) [ G / PH ]) = elementTwo(G,I:IndexedSet) .
+endm)
+
+(mod SIMPLIFIED-ABSTRACT-MACHINE-NOTATION is
+    inc GSL-SEMANTICS .
+	sort NeSubstitutionSet .
+	subsort Substitution < NeSubstitutionSet .
+
+	op BEGIN_END : Substitution -> Substitution .
+	op PRE_THEN_END : Predicate Substitution -> Substitution .
+	op IF_THEN_ELSE_END : Predicate Substitution Substitution -> Substitution .
+	op IF_THEN_END : Predicate Substitution -> Substitution .
+	op _:=`bool`(_`) : Variable Predicate -> Substitution .
+	op _OR_ : NeSubstitutionSet NeSubstitutionSet -> NeSubstitutionSet [assoc comm] .
+	op CHOICE_END : NeSubstitutionSet -> Substitution .
+	op ANY_WHERE_THEN_END : PlaceHolder Predicate Substitution -> Substitution .
+	op WHILE_DO_END : Predicate Substitution -> Substitution .
+
+	vars S T : Substitution . var SS : NeSubstitutionSet . var P : Predicate . var X : PlaceHolder .
+
+	eq BEGIN S END = S .
+	eq PRE P THEN S END = P | S .
+	eq IF P THEN S ELSE T END = (P ==> S) [] (neg(P) ==> S) .
+	eq IF P THEN S END = IF P THEN S ELSE skip END .
+	eq X := bool ( P ) = IF P THEN (X := true) ELSE (X := false) END .
+	eq CHOICE SS END = SS .
+	eq S OR T = S [] T .	
+	eq S OR (T OR SS) = S [] (T OR SS) .
+	eq ANY X WHERE P THEN S END = (@ X . (P ==> S)) .
+	eq WHILE P DO S END = ((P ==> S)^);(neg(P) ==> skip) .	
+endm)
