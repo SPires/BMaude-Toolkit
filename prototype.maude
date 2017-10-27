@@ -70,7 +70,9 @@ endv)
 (fmod GSL-ARRAYS is
 	inc ARRAY{Variable,Naturals}*(op _|->_ to _`,_) .
 	inc GSL-EXPRESSION .
+	---op _`(_`) : Array{Variable,Naturals} GNat -> Variable .
 	op _`(_`) : Array{Variable,Naturals} Expression -> Variable .
+	op gn : PlaceHolder -> GNat .
 	op nullVar : -> Variable .
 	vars X Y : Variable . vars G1 G2 : GNat . var A : Array{Variable,Naturals} .
 	ceq (X,G1) ; (Y, G2) ; A = ((X,G1) ; A) if (G1 == G2) .
@@ -200,7 +202,7 @@ endfm)
 	op _^ : Substitution -> Substitution [ctor] .
 	
 	--- Sequential composition
-	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor id: skip] .
+	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor] .
 endfm)
 
 (fmod GSL-STORE is 
@@ -248,6 +250,7 @@ endfm)
 	op _`[_/_`] : Predicate GBool PlaceHolder -> Predicate .
 	op _`[_/_`] : Substitution GNat PlaceHolder -> Substitution .
 	op _`[_/_`] : Substitution GBool PlaceHolder -> Substitution .
+	op _`[_/_`] : Variable GNat PlaceHolder -> Variable .
 	op `[_|_`] : Substitution Store -> Substitution .
 	
 	vars V V1 V2 : Variable . vars E E1 E2 : Expression . vars STO STO' : Store . vars G G1 G2 : GNat .
@@ -274,19 +277,47 @@ endfm)
 	eq [multi3] : (Y1, ([ (V := E) | STO ] ; S) , (V |-> Y2) STO') = (([ skip | STO ] ; S) , (V |-> Y1) STO') [variant] .
 	eq [multi4] : (([ skip | STO ] ; S), STO') = (S, STO') [variant] .
 	
+	eq [multi1] : ((V VL := E EL) , STO) = (E, [ (V VL := E EL) | STO ] , STO) [variant] .
+	eq [multi1] : ([ (V VL := E EL) | STO ] , STO') = (E, [ (V VL := E EL) | STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1), [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (G1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1), [ (V VL := E EL) | (V1 |-> B1) STO ] , STO') = (B1, [ (V VL := E EL) | (V1 |-> B1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1), [ (V VL := E EL) | (V1 |-> Y1) STO ] , STO') = (Y1, [ (V VL := E EL) | (V1 |-> Y1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1) + E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (G1 + E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1) x E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (G1 x E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1) - E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (G1 - E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (E1 - exp(V1), [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (E1 - G1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') = (G1 eq E1, [ (V VL := E EL) | (V1 |-> G1) STO ] , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, [ (V VL := E EL) | (V1 |-> Y1) STO ] , STO') = (Y1 eq E1, [ (V VL := E EL) | (V1 |-> Y1) STO ] , STO') [variant] .
+	eq [multi3] : (G1, [ (V VL := E EL) | STO ] , (V |-> G2) STO') = ([ (VL := EL) | STO ] , (V |-> G1) STO') [variant] .
+	eq [multi3] : (G1, [ (V := E) | STO ] , (V |-> G2) STO') = ([ skip | STO ] , (V |-> G1) STO') [variant] .
+	eq [multi3] : (B1, [ (V VL := E EL) | STO ] , (V |-> B2) STO') = ([ (VL := EL) | STO ] , (V |-> B1) STO') [variant] .
+	eq [multi3] : (B1, [ (V := E) | STO ] , (V |-> B2) STO') = ([ skip | STO ] , (V |-> B1) STO') [variant] .
+	eq [multi3] : (Y1, [ (V VL := E EL) | STO ] , (V |-> Y2) STO') = ([ (VL := EL) | STO ] , (V |-> Y1) STO') [variant] .
+	eq [multi3] : (Y1, [ (V := E) | STO ] , (V |-> Y2) STO') = ([ skip | STO ] , (V |-> Y1) STO') [variant] .
+	eq [multi4] : ([ skip | STO ], STO') = (skip, STO') [variant] .
+	
 	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> B) STO)) = (B, ((V2 := E) ; S) , ((V1 |-> B) STO)) [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> Y) STO)) = (Y, ((V2 := E) ; S) , ((V1 |-> Y) STO)) [variant] .
 	eq [simple2] : (exp(V1) + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (exp(V1) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (E1 - exp(V1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (exp(V1) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - exp(V1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (E1 - G, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
 	eq [simple3] : (G1, ((V := E) ; S) , ((V |-> G2) STO)) = (S , ((V |-> G1) STO)) [variant] .
-	eq [simple3] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
 	eq [simple3] : (B1, ((V := E) ; S) , ((V |-> B2) STO)) = (S , ((V |-> B1) STO)) [variant] .
-	eq [simple3] : (B1, (V := E) , ((V |-> B2) STO)) = (skip , ((V |-> B1) STO)) [variant] .
 	eq [simple3] : (Y1, ((V := E) ; S) , ((V |-> Y2) STO)) = (S , ((V |-> Y1) STO)) [variant] .
+	
+	eq [simple1] : ((V := E) , STO) = (E, (V := E) , STO)  [variant] .
+	eq [simple2] : (exp(V1), (V2 := E) , ((V1 |-> G) STO)) = (G, (V2 := E) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1), (V2 := E) , ((V1 |-> B) STO)) = (B, (V2 := E) , ((V1 |-> B) STO)) [variant] .
+	eq [simple2] : (exp(V1), (V2 := E) , ((V1 |-> Y) STO)) = (Y, (V2 := E) , ((V1 |-> Y) STO)) [variant] .
+	eq [simple2] : (exp(V1) + E1, (V2 := E2) , ((V1 |-> G) STO)) = (G + E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) - E1, (V2 := E2) , ((V1 |-> G) STO)) = (G - E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - exp(V1), (V2 := E2) , ((V1 |-> G) STO)) = (E1 - G, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) x E1, (V2 := E2) , ((V1 |-> G) STO)) = (G x E1, (V2 := E2) , ((V1 |-> G) STO)) [variant] .
+	eq [simple3] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
+	eq [simple3] : (B1, (V := E) , ((V |-> B2) STO)) = (skip , ((V |-> B1) STO)) [variant] .
 	eq [simple3] : (Y1, (V := E) , ((V |-> Y2) STO)) = (skip , ((V |-> Y1) STO)) [variant] .
 	
 	eq [pre1] : (((P | S) ; S1) , STO) = (P , ((P | S) ; S1) , STO) [variant] .
@@ -306,6 +337,22 @@ endfm)
 	eq [pre2] : ((exp(V1) in SN), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G in SN, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre3] : (true, ((P | S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
 	eq [pre4] : (false, ((P | S) ; S1) , STO) = (S1 , STO) [variant] .
+	
+	eq [pre1] : ((P | S) , STO) = (P , (P | S) , STO) [variant] .
+	eq [pre2] : ((exp(V1) eq E), (P | S) , ((V1 |-> G) STO)) = (G eq E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) <= E), (P | S) , ((V1 |-> G) STO)) = (G <= E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) < E), (P | S) , ((V1 |-> G) STO)) = (G < E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) > E), (P | S) , ((V1 |-> G) STO)) = (G > E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) >= E), (P | S) , ((V1 |-> G) STO)) = (G >= E, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) <= exp(V2)), (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) = (G <= G1, (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) < exp(V2)), (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) = (G < G1, (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) > exp(V2)), (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) = (G > G1, (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) >= exp(V2)), (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) = (G >= G1, (P | S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((E <= exp(V1)), (P | S) , ((V1 |-> G) STO)) = (E <= G, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E < exp(V1)), (P | S) , ((V1 |-> G) STO)) = (E < G, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E > exp(V1)), (P | S) , ((V1 |-> G) STO)) = (E > G, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E >= exp(V1)), (P | S) , ((V1 |-> G) STO)) = (E >= G, (P | S) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) in SN), (P | S) , ((V1 |-> G) STO)) = (G in SN, (P | S) , ((V1 |-> G) STO)) [variant] .
 	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
 	eq [pre4] : (false, P | S , STO) = abort [variant] .
 	
@@ -330,6 +377,22 @@ endfm)
 	eq [guard2] : ((exp(V1) in SN), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G in SN), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard3] : (true, ((P ==> S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
 	eq [guard4] : (false, ((P ==> S) ; S1) , STO) = (S1, STO) [variant] .
+	
+	eq [guard1] : ((P ==> S) , STO) = (P , (P ==> S) , STO) [variant] .
+	eq [guard2] : ((exp(V1) eq E), (P ==> S) , ((V1 |-> G) STO)) = ((G eq E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) < E), (P ==> S) , ((V1 |-> G) STO)) = ((G < E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) <= E), (P ==> S) , ((V1 |-> G) STO)) = ((G <= E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) > E), (P ==> S) , ((V1 |-> G) STO)) = ((G > E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) >= E), (P ==> S) , ((V1 |-> G) STO)) = ((G >= E), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) < exp(V2)), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G < G1), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) <= exp(V2)), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G <= G1), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) > exp(V2)), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G > G1), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) >= exp(V2)), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G >= G1), (P ==> S) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((E < exp(V1)), (P ==> S) , ((V1 |-> G) STO)) = ((E < G), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E <= exp(V1)), (P ==> S) , ((V1 |-> G) STO)) = ((E <= G), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E > exp(V1)), (P ==> S) , ((V1 |-> G) STO)) = ((E > G), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E >= exp(V1)), (P ==> S) , ((V1 |-> G) STO)) = ((E >= G), (P ==> S) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) in SN), (P ==> S) , ((V1 |-> G) STO)) = ((G in SN), (P ==> S) , ((V1 |-> G) STO)) [variant] .
 	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
 	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .
 	
@@ -368,9 +431,9 @@ endfm)
 	eq [repl-great] : (E > PH) [ G / PH ] = (E [ G / PH ]) > G .
 	eq [repl-in] : (PH in SN) [ G / PH ] = G in SN .
 	eq [repl-in] : (PH in A) [ G / PH ] = G in A .
-	---eq [repl-array] : (A(PH) := E) [ G / PH ] = A((PH [ G / PH ])) := (E [ G / PH ]) .
-	---eq [repl-seq-comp] : (S1 ; (S2)) [ G / PH ] = (S1 [ G / PH ]) ; ((S2 [ G / PH ])) .
-	---eq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) .
+	eq [repl-array] : (A(PH) := E) [ G / PH ] = A(G) := (E [ G / PH ]) .
+	eq [repl-seq-comp] : (S1 ; S2) [ G / PH ] = ((S1 [ G / PH ]) ; (S2 [ G / PH ])) .
+	eq [repl-seq-comp] : (S1 ; S2) [ B / PH ] = ((S1 [ B / PH ]) ; (S2 [ B / PH ])) .
 	eq [repl-while] : (S ^) [ G / PH] = ( S [ G / PH ] ) ^ .
 	eq [repl-while] : (S ^) [ B / PH] = ( S [ B / PH ] ) ^ .
 endm)
@@ -432,6 +495,9 @@ endm)
 	eq S || (T [] (U [] SS)) = (S || T) [] (S || (U [] SS)) .
 	eq S || (P ==> T) = P ==> (S || T) .
 	eq T || (@ X . (P ==> S)) = (@ X . (P ==> (T || S))) .
+	eq skip || S = S .
+	eq S ; skip = S .
+	eq skip ; S = S .
 endm)
 
 (mod B-USER-INTERFACE is 
@@ -456,28 +522,26 @@ endm)
 (mod MUTEX-SIMPLE is
 	inc B-USER-INTERFACE .
 	
-	op protocol : -> Substitution .
-	ops stateP1 stateP2 : -> Variable .
+	op protocol : Array{Variable,Naturals} -> Substitution .
+	ops stateP1 stateP2 stateP3 criticSection : -> Variable .
+	op processes : -> Array{Variable,Naturals} .
+	op process : -> PlaceHolder .
 	ops idle wait crit : -> GSym .
 	
-	eq protocol =
+	var procSet : Array{Variable,Naturals} .
+	
+	eq processes = (stateP1,0) ; (stateP2,s(0)) .
+	
+	eq protocol(procSet) =
 	BEGIN
 		WHILE (true) DO (
-			SELECT (stateP1 eq idle) THEN (stateP1 := wait) END
+			ANY process WHERE (process in procSet) THEN (
+			SELECT (procSet(process) eq idle) THEN (stateP1 := wait) END
 			OR
-			SELECT (stateP2 eq idle) THEN (stateP2 := wait) END
+			SELECT ((procSet(process) eq wait) and (criticSection eq 0)) THEN ((procSet(process) := crit) ; (criticSection := s(0))) END
 			OR
-			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) THEN (stateP1 := crit) END
-			OR
-			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) THEN ((stateP1 := crit) ; (stateP2 := wait)) END
-			OR
-			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) THEN (stateP2 := crit) END
-			OR
-			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) THEN ((stateP2 := crit) ; (stateP1 := wait)) END
-			OR
-			SELECT (stateP1 eq crit) THEN (stateP1 := idle) END
-			OR
-			SELECT (stateP2 eq crit) THEN (stateP2 := idle) END
+			SELECT (procSet(process) eq crit) THEN ((procSet(process) := idle) ; (criticSection := 0)) END
+			) END
 		)END
 	END .
 endm)
@@ -500,27 +564,55 @@ endm)
 	eq S, (stateP2 |-> Y) STO |= critP2? = if (Y == crit) then true else false fi [variant] .
 endm)
 
-(lmc protocol, STO:Store |= [] ~(critP1? /\ critP2?) .)
-(lmc protocol, STO:Store |= [] (waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?) .)
+(lmc protocol(processes), STO:Store |= [] ~(critP1? /\ critP2?) .)
+(lmc protocol(processes), STO:Store |= [] (waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?) .)
 
+(mod LAMPORT-BAKERY is
+	inc B-USER-INTERFACE .
 	
-***(	eq protocol =
+	op protocol : Array{Variable,Naturals} Array{Variable,Naturals} -> Substitution .
+	ops stateP1 stateP2 dist server ticket1 ticket2 : -> Variable .
+	op processes : -> Array{Variable,Naturals} .
+	op tickets : -> Array{Variable,Naturals} .
+	op process : -> PlaceHolder .
+	ops idle wait crit : -> GSym .
+	
+	var procSet : Array{Variable,Naturals} . var tickSet : Array{Variable,Naturals} .
+	
+	eq processes = (stateP1,0) ; (stateP2,s(0)) .
+	eq tickets = (ticket1,0) ; (ticket2,s(0)) .
+	
+	eq protocol(procSet,tickSet) =
 	BEGIN
 		WHILE (true) DO (
-			SELECT (exp(stateP1) eq idle) THEN (stateP1 := wait) END
+			ANY process WHERE (process in procSet) THEN (
+			SELECT (procSet(process) eq idle) THEN ((tickSet(process) := exp(dist)) ; ((procSet(process) := wait) ; (dist := exp(dist) + s(0)))) END
 			OR
-			SELECT (exp(stateP2) eq idle) THEN (stateP2 := wait) END
+			SELECT ((procSet(process) eq wait) and (tickSet(process) eq exp(server))) THEN (procSet(process) := crit) END
 			OR
-			SELECT ((exp(stateP1) eq wait) and (exp(stateP2) eq idle)) THEN (stateP1 := crit) END
-			OR
-			SELECT ((exp(stateP1) eq wait) and (exp(stateP2) eq idle)) THEN ((stateP1 := crit) ; (stateP2 := wait)) END
-			OR
-			SELECT ((exp(stateP2) eq wait) and (exp(stateP1) eq idle)) THEN (stateP2 := crit) END
-			OR
-			SELECT ((exp(stateP2) eq wait) and (exp(stateP1) eq idle)) THEN ((stateP2 := crit) ; (stateP1 := wait)) END
-			OR
-			SELECT (exp(stateP1) eq crit) THEN (stateP1 := idle) END
-			OR
-			SELECT (exp(stateP2) eq crit) THEN (stateP2 := idle) END
+			SELECT (procSet(process) eq crit) THEN ((procSet(process) := idle) ; (server := exp(server) + s(0))) END
+			) END
 		)END
-	END .)
+	END .
+endm)
+
+(mod BAKERY-SAT is
+	inc LAMPORT-BAKERY .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops idleP1? waitP1? critP1? : -> Prop .
+	ops idleP2? waitP2? critP2? : -> Prop .
+	var S : Substitution . var STO : Store . var Y : GSym .
+	
+	eq S, (stateP1 |-> Y) STO |= idleP1? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= waitP1? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= critP1? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP2 |-> Y) STO |= idleP2? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= waitP2? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= critP2? = if (Y == crit) then true else false fi [variant] .
+endm)
+
+(lmc protocol(processes,tickets), STO:Store |= [] ~(critP1? /\ critP2?) .)
+(lmc protocol(processes,tickets), STO:Store |= [] (waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?) .)
