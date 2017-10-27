@@ -24,7 +24,7 @@ endfm)
 	eq 0 x G1 = 0 .
 	eq s(0) x G1 = G1 .
 	eq G1 x s(G2) = G1 + (G1 x G2) .
-endfm) *** Acréscimos
+endfm)
 
 (fmod GBOOL is
 	sort GBool .
@@ -39,7 +39,7 @@ endfm) *** Acréscimos
 	eq false and B = false .
 	eq true or B = true .
 	eq false or B = B .
-endfm) *** Acréscimos
+endfm)
 
 (fmod GSL-SYMBOL is
 	sort GSym .
@@ -53,7 +53,7 @@ endfm)
 	op _+_ : Expression Expression -> Expression [assoc comm] .
 	op _-_ : Expression Expression -> Expression .
 	op _x_ : Expression Expression -> Expression [assoc comm] .
-endfm) *** Acréscimos
+endfm)
 
 (view Naturals from DEFAULT to GNAT is
 	sort Elt to GNat .
@@ -87,6 +87,7 @@ endfm)
 	sort Predicate .
 	subsort GSym < Expression .
 	subsort GBool PlaceHolder < Predicate < Expression .
+	
 	op neg : Predicate -> Predicate .
 	op _and_ : Predicate Predicate -> Predicate [assoc comm] .		
 	op _eq_ : Expression Expression -> Predicate [assoc comm] .
@@ -96,30 +97,48 @@ endfm)
 	op _<_ : Expression Expression -> Predicate .
 	op _<=_ : Expression Expression -> Predicate .
 	op _in_ : Expression Set{Natural} -> Predicate .
-	op _in_ : Expression Array{Variable,Naturals} -> Predicate .
+	
 	vars G1 G2 : GNat . var GS : Set{Natural} . vars Y1 Y2 : GSym .
 	var V : Variable . var A : Array{Variable,Naturals} .
+	
 	eq G1 eq G2 = if (G1 == G2) then true else false fi .
 	eq Y1 eq Y2 = if (Y1 == Y2) then true else false fi .
+	
 	eq 0 > G1 = false .
 	eq G1 > 0 = if (G1 =/= 0) then true else false fi .
 	eq s(G1) > s(G2) = G1 > G2 .
+	
 	eq 0 >= G1 = if (G1 == 0) then true else false fi .
 	eq G1 >= 0 = true .
 	eq s(G1) >= s(G2) = G1 >= G2 .
+	
 	eq 0 < G1 = if (G1 == 0) then false else true fi .
 	eq G1 < 0 = false .
 	eq s(G1) < s(G2) = G1 < G2 .
+	
 	eq 0 <= G1 = true .
 	eq G1 <= 0 = if (G1 == 0) then true else false fi .
 	eq s(G1) <= s(G2) = G1 <= G2 .
+	
 	eq G1 in (G1,GS) = true .
 	eq G1 in GS = false [owise] .
-	eq G1 in ((V,G1) ; A) = true .
-	eq G1 in A = false [owise] .
-endfm) *** Acréscimos
+endfm)
 
 (fmod GSL-CONVERSION is
+
+***(
+
+	Coercion functions
+
+	In B, a variable can be an expression and part of a predicate.
+	The multiple assignment causes issues with the subsort relation
+	Variable < Predicate < Expression.
+
+	The use of lists in order to implement this operator causes troubles to Maude.
+	Once a Variable is an Expression, a list of variables is a list of expressions.
+	In order to avoid this problem, we need to use this functions.
+)
+
 	inc GSL-VARIABLE . inc GSL-EXPRESSION . inc GSL-PREDICATE .
 	op exp : Variable -> Expression .
 	op pre : Variable -> Predicate .
@@ -132,9 +151,18 @@ endfm)
 	subsort Variable < VarList .
 	subsort Expression < ExpList .
 
+***(
+	
+	Unification issues
+	
+	The current version of Maude System doesn't support unification of 
+	operators with the associativity axiom without the commutativity axiom. 
+	Unification over associativity isn't a finitary procedure.
+)
+	
 	op __ : Variable VarList -> VarList .
 	op __ : Expression ExpList -> ExpList .
-endfm) *** Dúvidas
+endfm)
 
 (fmod GSL-SYNTAX is
 	inc GSL-EXPRESSION . 
@@ -187,10 +215,17 @@ endfm)
 
 	var V : Variable . var G : GNat . var S : Store . var B : GBool . var Y : GSym .
 
+	--- Idempotency rules
 	eq (V |-> G)  (V |-> G)  S = (V |-> G)  S .
 	eq (V |-> B)  (V |-> B)  S = (V |-> B)  S .
 	eq (V |-> Y)  (V |-> Y)  S = (V |-> Y)  S .
-endfm) *** Acréscimos
+	
+	--- Preference of types
+	--- There are no two variables with the same name and different types.
+	eq (V |-> G) (V |-> Y) S = (V |-> G) S .
+	eq (V |-> G) (V |-> B) S = (V |-> G) S .
+	eq (V |-> Y) (V |-> B) S = (V |-> Y) S .
+endfm)
 
 (mod GSL-SEMANTICS is
 	inc GSL-SYNTAX .
@@ -209,13 +244,31 @@ endfm) *** Acréscimos
 	op _`[_/_`] : Predicate GBool PlaceHolder -> Predicate .
 	op _`[_/_`] : Substitution GNat PlaceHolder -> Substitution .
 	op _`[_/_`] : Substitution GBool PlaceHolder -> Substitution .
-	---op `[_|_`] : Substitution Substitution -> Substitution .
+	op `[_|_`] : Substitution Store -> Substitution .
 	
 	vars V V1 V2 : Variable . vars E E1 E2 : Expression . vars STO STO' : Store . vars G G1 G2 : GNat .
 	vars P P1 P2 : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . vars B B1 B2 : GBool .
 	var VL : VarList . var EL : ExpList . vars Y Y1 Y2 : GSym . var SN : Set{Natural} .
 	var A : Array{Variable,Naturals} .
 	
+	eq [multi1] : (((V VL := E EL) ; S) , STO) = (E, ([ (V VL := E EL) | STO ] ; S) , STO) [variant] .
+	eq [multi1] : (([ (V VL := E EL) | STO ] ; S) , STO') = (E, ([ (V VL := E EL) | STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> B1) STO ] ; S) , STO') = (B1, ([ (V VL := E EL) | (V1 |-> B1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') = (Y1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (E1 - exp(V1), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (E1 - G1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') = (Y1 eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') [variant] .
+	eq [multi3] : (G1, ([ (V VL := E EL) | STO ] ; S) , (V |-> G2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> G1) STO') [variant] .
+	eq [multi3] : (G1, ([ (V := E) | STO ] ; S) , (V |-> G2) STO') = (([ skip | STO ] ; S) , (V |-> G1) STO') [variant] .
+	eq [multi3] : (B1, ([ (V VL := E EL) | STO ] ; S) , (V |-> B2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> B1) STO') [variant] .
+	eq [multi3] : (B1, ([ (V := E) | STO ] ; S) , (V |-> B2) STO') = (([ skip | STO ] ; S) , (V |-> B1) STO') [variant] .
+	eq [multi3] : (Y1, ([ (V VL := E EL) | STO ] ; S) , (V |-> Y2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> Y1) STO') [variant] .
+	eq [multi3] : (Y1, ([ (V := E) | STO ] ; S) , (V |-> Y2) STO') = (([ skip | STO ] ; S) , (V |-> Y1) STO') [variant] .
+	eq [multi4] : (([ skip | STO ] ; S), STO') = (S, STO') [variant] .
 	
 	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
@@ -310,15 +363,13 @@ endfm) *** Acréscimos
 	eq [repl-great] : (PH > E) [ G / PH ] = G > (E [ G / PH ]) .
 	eq [repl-great] : (E > PH) [ G / PH ] = (E [ G / PH ]) > G .
 	eq [repl-in] : (PH in SN) [ G / PH ] = G in SN .
-	eq [repl-in] : (PH in A) [ G / PH ] = G in A .
-	
-	---eq [repl-seq-comp] : (S1 ; S2) [ G / PH ] = (S1 [ G / PH ]) ; (S2 [ G / PH ]) .
+	---eq [repl-seq-comp] : (S1 ; (S2)) [ G / PH ] = (S1 [ G / PH ]) ; ((S2 [ G / PH ])) .
 	---eq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) .
 	eq [repl-while] : (S ^) [ G / PH] = ( S [ G / PH ] ) ^ .
 	eq [repl-while] : (S ^) [ B / PH] = ( S [ B / PH ] ) ^ .
 endm)
 
-(mod debug is
+***(mod debug is
 inc GSL-SEMANTICS .
 
 op p : -> Predicate .
@@ -327,14 +378,15 @@ op h : -> PlaceHolder .
 ops v u x y : -> Variable .
 op A : -> Array{Variable,Naturals} .
 op `(_eq_`) : Variable Variable -> Predicate .
+op a : -> GSym .
 
 vars V U : Variable .
 
 eq A = (x,0) ; (y,s(0)) ; (v,s^2(0)) .
 eq (V eq U) = exp(V) eq exp(U) .
 endm)
-eof
-(mod SIMPLIFIED-ABSTRACT-MACHINE-NOTATION-4-OPERATIONS is
+
+(mod SIMPLIFIED-AMN-4-OPERATIONS is
     inc GSL-SEMANTICS .
 	sort NeSubstitutionSet .
 	subsort Substitution < NeSubstitutionSet .
