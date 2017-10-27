@@ -97,6 +97,7 @@ endfm)
 	op _<_ : Expression Expression -> Predicate .
 	op _<=_ : Expression Expression -> Predicate .
 	op _in_ : Expression Set{Natural} -> Predicate .
+	op _in_ : Expression Array{Variable,Naturals} -> Predicate .
 	
 	vars G1 G2 : GNat . var GS : Set{Natural} . vars Y1 Y2 : GSym .
 	var V : Variable . var A : Array{Variable,Naturals} .
@@ -122,6 +123,9 @@ endfm)
 	
 	eq G1 in (G1,GS) = true .
 	eq G1 in GS = false [owise] .
+	
+	eq G1 in ((V,G1) ; A) = true .
+	eq G1 in A = false [owise] .
 endfm)
 
 (fmod GSL-CONVERSION is
@@ -363,6 +367,8 @@ endfm)
 	eq [repl-great] : (PH > E) [ G / PH ] = G > (E [ G / PH ]) .
 	eq [repl-great] : (E > PH) [ G / PH ] = (E [ G / PH ]) > G .
 	eq [repl-in] : (PH in SN) [ G / PH ] = G in SN .
+	eq [repl-in] : (PH in A) [ G / PH ] = G in A .
+	---eq [repl-array] : (A(PH) := E) [ G / PH ] = A((PH [ G / PH ])) := (E [ G / PH ]) .
 	---eq [repl-seq-comp] : (S1 ; (S2)) [ G / PH ] = (S1 [ G / PH ]) ; ((S2 [ G / PH ])) .
 	---eq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) .
 	eq [repl-while] : (S ^) [ G / PH] = ( S [ G / PH ] ) ^ .
@@ -427,3 +433,94 @@ endm)
 	eq S || (P ==> T) = P ==> (S || T) .
 	eq T || (@ X . (P ==> S)) = (@ X . (P ==> (T || S))) .
 endm)
+
+(mod B-USER-INTERFACE is 
+	inc SIMPLIFIED-AMN-4-OPERATIONS .
+	---op `(_eq_`) : Variable Variable -> Predicate .
+	op `(_eq_`) : Variable Expression -> Predicate .
+	---op `(_eq_`) : Expression Variable -> Predicate .
+	---op `(_+_`) : Variable Variable -> Expression .
+	---op `(_+_`) : Variable Expression -> Expression .
+	---op `(_+_`) : Expression Variable -> Expression .
+	---op `(_-_`) : Variable Variable -> Expression .
+	---op `(_-_`) : Variable Expression -> Expression .
+	---op `(_-_`) : Expression Variable -> Expression .
+	---op `(_x_`) : Variable Variable -> Expression .
+	---op `(_x_`) : Variable Expression -> Expression .
+	---op `(_x_`) : Expression Variable -> Expression .
+	
+	var V : Variable . var E : Expression .
+	eq (V eq E) = (exp(V) eq E) .
+endm)
+
+(mod MUTEX-SIMPLE is
+	inc B-USER-INTERFACE .
+	
+	op protocol : -> Substitution .
+	ops stateP1 stateP2 : -> Variable .
+	ops idle wait crit : -> GSym .
+	
+	eq protocol =
+	BEGIN
+		WHILE (true) DO (
+			SELECT (stateP1 eq idle) THEN (stateP1 := wait) END
+			OR
+			SELECT (stateP2 eq idle) THEN (stateP2 := wait) END
+			OR
+			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) THEN (stateP1 := crit) END
+			OR
+			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) THEN ((stateP1 := crit) ; (stateP2 := wait)) END
+			OR
+			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) THEN (stateP2 := crit) END
+			OR
+			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) THEN ((stateP2 := crit) ; (stateP1 := wait)) END
+			OR
+			SELECT (stateP1 eq crit) THEN (stateP1 := idle) END
+			OR
+			SELECT (stateP2 eq crit) THEN (stateP2 := idle) END
+		)END
+	END .
+endm)
+
+(mod MUTEX-SIMPLE-SAT is
+	inc MUTEX-SIMPLE .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops idleP1? waitP1? critP1? : -> Prop .
+	ops idleP2? waitP2? critP2? : -> Prop .
+	var S : Substitution . var STO : Store . var Y : GSym .
+	
+	eq S, (stateP1 |-> Y) STO |= idleP1? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= waitP1? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= critP1? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP2 |-> Y) STO |= idleP2? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= waitP2? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= critP2? = if (Y == crit) then true else false fi [variant] .
+endm)
+
+(lmc protocol, STO:Store |= [] ~(critP1? /\ critP2?) .)
+(lmc protocol, STO:Store |= [] (waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?) .)
+
+	
+***(	eq protocol =
+	BEGIN
+		WHILE (true) DO (
+			SELECT (exp(stateP1) eq idle) THEN (stateP1 := wait) END
+			OR
+			SELECT (exp(stateP2) eq idle) THEN (stateP2 := wait) END
+			OR
+			SELECT ((exp(stateP1) eq wait) and (exp(stateP2) eq idle)) THEN (stateP1 := crit) END
+			OR
+			SELECT ((exp(stateP1) eq wait) and (exp(stateP2) eq idle)) THEN ((stateP1 := crit) ; (stateP2 := wait)) END
+			OR
+			SELECT ((exp(stateP2) eq wait) and (exp(stateP1) eq idle)) THEN (stateP2 := crit) END
+			OR
+			SELECT ((exp(stateP2) eq wait) and (exp(stateP1) eq idle)) THEN ((stateP2 := crit) ; (stateP1 := wait)) END
+			OR
+			SELECT (exp(stateP1) eq crit) THEN (stateP1 := idle) END
+			OR
+			SELECT (exp(stateP2) eq crit) THEN (stateP2 := idle) END
+		)END
+	END .)
