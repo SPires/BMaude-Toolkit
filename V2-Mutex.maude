@@ -1,0 +1,60 @@
+(mod MUTEX-V2 is
+	inc B-USER-INTERFACE .
+	
+	op protocol : -> Substitution .
+	ops stateP1 stateP2 : -> Variable .
+	ops idle wait crit : -> GSym .
+
+	eq protocol =
+	BEGIN
+		WHILE (true) DO (
+			SELECT (stateP1 eq idle) THEN (stateP1 := wait) END
+			OR
+			SELECT (stateP2 eq idle) THEN (stateP2 := wait) END
+			OR
+			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) 
+				THEN ((stateP1 := crit) ; (stateP2 := wait)) END
+			OR
+			SELECT ((stateP1 eq wait) and (stateP2 eq idle)) 
+				THEN (stateP1 := crit) END
+			OR
+			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) 
+				THEN ((stateP2 := crit) ; (stateP1 := wait)) END
+			OR
+			SELECT ((stateP2 eq wait) and (stateP1 eq idle)) 
+				THEN (stateP2 := crit) END
+			OR
+			SELECT (stateP1 eq crit) THEN (stateP1 := idle) END
+			OR
+			SELECT (stateP2 eq crit) THEN (stateP2 := idle) END
+		) END
+	END .
+endm)
+
+(mod MUTEX-V2-SAT is
+	inc MUTEX-V2 .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops idleP1? waitP1? critP1? : -> Prop .
+	ops idleP2? waitP2? critP2? : -> Prop .
+	var S : Substitution . var STO : Store . var Y : GSym .
+	
+	eq S, (stateP1 |-> Y) STO |= idleP1? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= waitP1? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= critP1? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP2 |-> Y) STO |= idleP2? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= waitP2? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= critP2? = if (Y == crit) then true else false fi [variant] .
+endm)
+
+--- Safety property
+(lmc protocol, STO:Store |= [] ~(critP1? /\ critP2?) .)
+--- Para utilizar o teste abaixo, basta descomentar o comando.
+---(lmc protocol, (stateP1 |-> idle) (stateP2 |-> idle) |= [] ~(critP1? /\ critP2?) .)
+
+--- Liveness property
+(lmc protocol, STO:Store |=   [] ((waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?)) .)
+--- Para utilizar o teste abaixo, basta descomentar o comando.
+---(lmc protocol, (stateP1 |-> idle) (stateP2 |-> idle) |=   [] ((waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?)) .)
