@@ -1,0 +1,426 @@
+load symbolic-checker .
+set verbose on .
+
+(fmod GSL-VARIABLE is
+	sort Variable PlaceHolder .
+endfm)
+
+(fmod GNAT is 
+	sort GNat .
+	op 0 : -> GNat .
+	op s : GNat -> GNat .
+	op _+_ : GNat GNat -> GNat [assoc comm] .
+	op _-_ : GNat GNat -> GNat .
+	op _x_ : GNat GNat -> GNat [assoc comm] .
+	vars G G1 G2 : GNat .
+	eq 0 + G = G .
+	eq G1 + s(G2) = s(G1 + G2) .
+	eq G - 0 = G .
+	eq s(G1) - s(G2) = G1 - G2 .
+	eq G x 0 = 0 .
+	eq G1 x s(G2) = G1 + (G1 x G2) .
+endfm)
+
+(fmod GSL-SYMBOL is
+	sort GSym .
+endfm)
+
+(fmod GSL-EXPRESSION is
+	inc GNAT .
+	inc GSL-SYMBOL .
+	inc GSL-VARIABLE .
+	sort Expression .
+	subsort GSym GNat PlaceHolder < Expression .
+	subsort PlaceHolder < Expression .
+	op _+_ : Expression Expression -> Expression [assoc comm] .
+	op _-_ : Expression Expression -> Expression .
+	op _x_ : Expression Expression -> Expression [assoc comm] .
+endfm)
+
+(fmod GBOOL is
+	sort GBool .
+	ops true false : -> GBool .
+	op neg : GBool -> GBool .
+	op _and_ : GBool GBool -> GBool [assoc comm] .
+	op _or_ : GBool GBool -> GBool [assoc comm] .
+	vars G G1 G2 : GBool .
+	eq neg(true) = false .
+	eq neg(false) = true .
+	eq true and G = G .
+	eq false and G = false .
+	eq true or G = true .
+	eq false or G = G . 
+endfm)
+
+(view Naturals from DEFAULT to GNAT is
+	sort Elt to GNat .
+endv)
+
+(view Natural from TRIV to GNAT is
+	sort Elt to GNat .
+endv)
+
+(view Variable from TRIV to GSL-VARIABLE is
+	sort Elt to Variable .
+endv)
+
+(fmod GSL-ARRAYS is
+	inc ARRAY{Variable,Naturals}*(op _|->_ to _`,_) .
+	inc ARRAY{Natural,Naturals}*(op _|->_ to _`,_) .
+	inc GSL-EXPRESSION .
+	op _`(_`) : Array{Variable,Naturals} Expression -> Variable .
+	op _`(_`) : Array{Natural,Naturals} Expression -> GNat .
+	op nullVar : -> Variable .
+	op error : -> GNat .
+	vars X Y : Variable . vars G G1 G2 : GNat . var A : Array{Variable,Naturals} .
+	var B : Array{Natural,Naturals} .
+	eq (X,G) ; (Y, G) ; A = ((X,G) ; A) .
+	eq ((X,G) ; A)(G) = X .
+	eq ((X,G1) ; A)(G2) = nullVar [owise] .
+	eq ((G1,G) ; B)(G) = G1 .
+	eq ((G,G1) ; B)(G2) = error [owise] .
+endfm)
+
+(fmod GSL-PREDICATE is 
+	inc GBOOL . inc GSL-EXPRESSION .
+	inc GSL-VARIABLE .	inc GSL-ARRAYS .
+	sort Predicate .
+	subsort GBool PlaceHolder < Predicate < Expression .
+	op neg : Predicate -> Predicate .
+	op _and_ : Predicate Predicate -> Predicate [assoc comm] .		
+	op _eq_ : Expression Expression -> Predicate [assoc comm] .
+	op _or_ : Predicate Predicate -> Predicate [assoc comm] .
+	op _>_ : Expression Expression -> Predicate .
+	op _>=_ : Expression Expression -> Predicate .
+	op _<_ : Expression Expression -> Predicate .
+	op _<=_ : Expression Expression -> Predicate .
+	op _in_ : Expression Array{Variable,Naturals} -> Predicate .
+	
+	vars G1 G2 : GNat . vars Y1 Y2 : GSym . var V : Variable .
+	var A : Array{Variable,Naturals} .
+	
+	eq G1 eq G2 = if (G1 == G2) then true else false fi .
+	eq Y1 eq Y2 = if (Y1 == Y2) then true else false fi .
+	
+	eq (0).GNat > G1 = false .
+	eq G1 > (0).GNat = if (G1 =/= (0).GNat) then true else false fi .
+	eq s(G1) > s(G2) = G1 > G2 .
+	
+	eq (0).GNat >= G1 = if (G1 == (0).GNat) then true else false fi .
+	eq G1 >= (0).GNat = true .
+	eq s(G1) >= s(G2) = G1 >= G2 .
+	
+	eq (0).GNat < G1 = if (G1 == (0).GNat) then false else true fi .
+	eq G1 < (0).GNat = false .
+	eq s(G1) < s(G2) = G1 < G2 .
+	
+	eq (0).GNat <= G1 = true .
+	eq G1 <= (0).GNat = if (G1 == (0).GNat) then true else false fi .
+	eq s(G1) <= s(G2) = G1 <= G2 .
+	
+	eq G1 in ((V,G1) ; A) = true .
+	eq G1 in A = false [owise] .
+endfm)
+
+(fmod GSL-CONVERSION is
+	inc GSL-VARIABLE . inc GSL-EXPRESSION . inc GSL-PREDICATE .
+	op exp : Variable -> Expression .
+	op pred : Variable -> Predicate .
+endfm)
+
+(fmod GSL-LISTS is
+	inc GSL-CONVERSION .
+	sorts VarList ExpList .
+	subsort Variable < VarList .
+	subsort Expression < ExpList .
+
+	op __ : Variable VarList -> VarList .
+	op __ : Expression ExpList -> ExpList .
+endfm)
+
+(fmod GSL-SYNTAX is
+	inc GSL-LISTS .
+	
+	sort Substitution UChoice .
+	subsort UChoice < Substitution .
+	
+	--- Simple substitution
+	op _:=_ : Variable Expression -> Substitution [ctor] .
+	op _:=_ : VarList ExpList -> Substitution [ctor] .
+
+	--- "Does nothing" substitution
+	op skip : -> Substitution [ctor] .
+
+	--- Pre-condition substitution
+	op _|_ : Predicate Substitution -> Substitution [ctor] .
+
+	--- Bounded choice substitution
+	op _`[`]_ : Substitution Substitution -> Substitution [assoc comm ctor] .
+
+	--- Guarded substitution
+	op _==>_ : Predicate Substitution -> Substitution [ctor] .
+
+	--- Unbounded choice substitution
+	op @_._ : PlaceHolder Substitution -> UChoice [ctor] .
+	
+	--- Loop Substitution
+	op _^ : Substitution -> Substitution [ctor] .
+	
+	--- Sequential composition
+	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor id: skip] .
+endfm)
+
+(fmod GSL-STORE is 
+	inc GSL-VARIABLE .
+	inc GNAT . inc GSL-SYMBOL . inc GBOOL .
+	
+	sorts Cell Store .
+	subsort Cell < Store .
+	
+	op _|->_ : Variable GNat -> Cell .
+	op _|->_ : Variable GBool -> Cell .
+	op _|->_ : Variable GSym -> Cell .
+
+	op empty : -> Store .
+	op __ : Store Store -> Store [assoc comm id: empty] .
+
+	var V : Variable . var G : GNat . var S : Store .
+	var Y : GSym . var B : GBool .
+
+	eq (V |-> G)  (V |-> G)  S = (V |-> G)  S .
+	eq (V |-> B)  (V |-> B)  S = (V |-> B)  S .
+	eq (V |-> Y)  (V |-> Y)  S = (V |-> Y)  S .
+endfm)
+
+(mod GSL-SEMANTICS is
+	inc GSL-SYNTAX .
+	inc GSL-STORE .
+	
+	sort Conf .
+
+	op abort : -> Conf .
+	
+	op _`,_ : Substitution Store -> Conf .
+	op _`,_`,_ : Predicate Substitution Store -> Conf [frozen] .
+	op _`,_`,_ : Expression Substitution Store -> Conf [frozen] .
+	op _`[_/_`] : Variable GNat PlaceHolder -> Variable .
+	op _`[_/_`] : Variable GBool PlaceHolder -> Variable .
+	op _`[_/_`] : Expression GNat PlaceHolder -> Expression .
+	op _`[_/_`] : Expression GBool PlaceHolder -> Expression .
+	op _`[_/_`] : Predicate GNat PlaceHolder -> Predicate .
+	op _`[_/_`] : Predicate GBool PlaceHolder -> Predicate .
+	op _`[_/_`] : Substitution GNat PlaceHolder -> Substitution .
+	op _`[_/_`] : Substitution GBool PlaceHolder -> Substitution .
+	op `[_|_`] : Substitution Store -> Substitution .
+	
+
+	vars V V1 V2 : Variable . vars E E1 E2 : Expression . vars STO STO' : Store . vars G G1 G2 : GNat .
+	vars P P1 P2 : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . vars B B1 B2 : GBool .
+	vars Y Y1 Y2 : GSym . var VL : VarList . var EL : ExpList . var A : Array{Variable,Naturals} .
+	
+	eq [multi1] : (((V VL := E EL) ; S) , STO) = (E, ([ (V VL := E EL) | STO ] ; S) , STO) [variant] .
+	eq [multi1] : (([ (V VL := E EL) | STO ] ; S) , STO') = (E, ([ (V VL := E EL) | STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> B1) STO ] ; S) , STO') = (B1, ([ (V VL := E EL) | (V1 |-> B1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1), ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') = (Y1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (E1 - exp(V1), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (E1 - G1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') = (Y1 eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') [variant] .
+	eq [multi3] : (G1, ([ (V VL := E EL) | STO ] ; S) , (V |-> G2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> G1) STO') [variant] .
+	eq [multi3] : (G1, ([ (V := E) | STO ] ; S) , (V |-> G2) STO') = (([ skip | STO ] ; S) , (V |-> G1) STO') [variant] .
+	eq [multi3] : (B1, ([ (V VL := E EL) | STO ] ; S) , (V |-> B2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> B1) STO') [variant] .
+	eq [multi3] : (B1, ([ (V := E) | STO ] ; S) , (V |-> B2) STO') = (([ skip | STO ] ; S) , (V |-> B1) STO') [variant] .
+	eq [multi3] : (Y1, ([ (V VL := E EL) | STO ] ; S) , (V |-> Y2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> Y1) STO') [variant] .
+	eq [multi3] : (Y1, ([ (V := E) | STO ] ; S) , (V |-> Y2) STO') = (([ skip | STO ] ; S) , (V |-> Y1) STO') [variant] .
+	eq [multi4] : (([ skip | STO ] ; S), STO') = (S, STO') [variant] .
+	
+	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
+	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> B) STO)) = (B, ((V2 := E) ; S) , ((V1 |-> B) STO)) [variant] .
+	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> Y) STO)) = (Y, ((V2 := E) ; S) , ((V1 |-> Y) STO)) [variant] .
+	eq [simple2] : (exp(V1) + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - exp(V1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple3] : (G1, ((V := E) ; S) , ((V |-> G2) STO)) = (S , ((V |-> G1) STO)) [variant] .
+	eq [simple3] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
+	eq [simple3] : (B1, ((V := E) ; S) , ((V |-> B2) STO)) = (S , ((V |-> B1) STO)) [variant] .
+	eq [simple3] : (B1, (V := E) , ((V |-> B2) STO)) = (skip , ((V |-> B1) STO)) [variant] .
+	eq [simple3] : (Y1, ((V := E) ; S) , ((V |-> Y2) STO)) = (S , ((V |-> Y1) STO)) [variant] .
+	eq [simple3] : (Y1, (V := E) , ((V |-> Y2) STO)) = (skip , ((V |-> Y1) STO)) [variant] .
+
+	eq [pre1] : (((P | S) ; S1) , STO) = (P , ((P | S) ; S1) , STO) [variant] .
+	eq [pre2] : ((exp(V1) eq E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) <= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G <= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) < E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G < E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) > E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G > E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) >= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G >= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(V1) <= exp(V2)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (G <= G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) < exp(V2)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (G < G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) > exp(V2)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (G > G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(V1) >= exp(V2)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (G >= G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((E <= exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E <= G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E < exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E < G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E > exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E > G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E >= exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E >= G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre3] : (true, ((P | S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [pre4] : (false, ((P | S) ; S1) , STO) = (S1 , STO) [variant] .
+	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
+	eq [pre4] : (false, P | S , STO) = abort [variant] .
+
+	rl [bchoice] : S1 [] S2 => S1 .
+	
+	eq [loop] : (S)^ = (S ; (S ^)) [] skip .
+
+	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
+	eq [guard2] : ((exp(V1) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(V1) < exp(V2)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G < G1), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) <= exp(V2)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G <= G1), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) > exp(V2)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G > G1), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(V1) >= exp(V2)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((G >= G1), ((P ==> S) ; S1) , ((V1 |-> G) (V2  |-> G1) STO)) [variant] .
+	eq [guard2] : ((E < exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E < G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E <= exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E <= G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E > exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E > G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E >= exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E >= G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard3] : (true, ((P ==> S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
+	eq [guard4] : (false, ((P ==> S) ; S1) , STO) = (S1, STO) [variant] .
+	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
+	eq [guard4] : (false, (P ==> S) , STO) = (skip, STO) [variant] .
+
+	rl [uchoice] : (@ PH . S), STO => (S [ G / PH ]), STO [nonexec] .
+	rl [uchoice] : (@ PH . S), STO => (S [ B / PH ]), STO [nonexec] .  	
+	
+	--- Equations for _[_/_]
+	--- We assume that alpha-renaming has been performed.
+	eq [repl-gnat] : G1 [ G2 / PH ] = G1 .
+	eq [repl-gnat] : G [ B / PH ] = B .
+	eq [repl-gbool1] : B1 [ B2 / PH ] = B1 .
+	eq [repl-gbool2] : B [ G / PH ] = B .	
+	eq [repl-simple] : (V := E) [ G / PH ] = (V [ G / PH ]) := ( E [ G / PH ] ) .
+	eq [repl-simple] : (V := E) [ B / PH ] = (V [ B / PH ]) := ( E [ B / PH ] ) .	
+	eq [repl-guarded-subst] : (P ==> S) [ G / PH ] = (P [ G / PH ]) ==> (S [ G / PH]) . 
+	eq [repl-guarded-subst] : (P ==> S) [ B / PH ] = (P [ B / PH ]) ==> (S [ B / PH]) . 
+	eq [repl-pre-subst] : (P | S) [ G / PH ] = (P [ G / PH ]) | (S [ G / PH]) . 
+	eq [repl-pre-subst] : (P | S) [ B / PH ] = (P [ B / PH ]) | (S [ B / PH]) . 
+	eq [repl-ph-gnat] : PH [ G / PH ] = G .
+	eq [repl-ph-gbool] : PH [ B / PH ] = B .
+	eq [repl-and] : (P1 and P2) [ B / PH ] = (P1 [ B / PH]) and (P2 [ B / PH]) .
+	eq [repl-and] : (P1 and P2) [ G / PH ] = (P1 [ G / PH]) and (P2 [ G / PH]) .
+	eq [repl-or] : (P1 or P2) [ B / PH ] = (P1 [ B / PH]) or (P2 [ B / PH]) .
+	eq [repl-or] : (P1 or P2) [ G / PH ] = (P1 [ G / PH]) or (P2 [ G / PH]) .
+	eq [repl-eq] : (E1 eq E2) [ G / PH ] = (E1 [ G / PH ]) eq (E2 [ G / PH ]) .
+	eq [repl-equals] : (PH eq E) [ G / PH ] = G eq E .
+	eq [repl-ph-sum] : (PH + E) [ G / PH ] = G + (E [ G / PH ]) .
+	eq [repl-ph-tim] : (PH x E) [ G / PH ] = G x (E [ G / PH ]) .
+	eq [repl-ph-sub] : (PH - E) [ G / PH ] = G - (E [ G / PH ]) .
+	eq [repl-ph-sub] : (E - PH) [ G / PH ] = (E [ G / PH ]) - G .
+	eq [repl-leq] : (PH <= E) [ G / PH ] = G <= (E [ G / PH ]) .
+	eq [repl-leq] : (E <= PH) [ G / PH ] = (E [ G / PH ]) <= G .
+	eq [repl-geq] : (PH >= E) [ G / PH ] = G >= (E [ G / PH ]) .
+	eq [repl-geq] : (E >= PH) [ G / PH ] = (E [ G / PH ]) >= G .
+	eq [repl-less] : (PH < E) [ G / PH ] = G < (E [ G / PH ]) .
+	eq [repl-less] : (E < PH) [ G / PH ] = (E [ G / PH ]) < G .
+	eq [repl-great] : (PH > E) [ G / PH ] = G > (E [ G / PH ]) .
+	eq [repl-great] : (E > PH) [ G / PH ] = (E [ G / PH ]) > G .
+	eq [repl-in] : (PH in A) [ G / PH ] = G in A .
+	eq [repl-array] : A(PH) [ G / PH ] = A((PH [ G / PH ])) .
+	eq [repl-array] : V [ G / PH ] = V [owise] .
+	eq [repl-array] : V [ B / PH ] = V [owise] .
+	ceq [repl-seq-comp] : (S1 ; S2) [ G / PH ] = (S1 [ G / PH ]) ; ((S2 [ G / PH ])) 
+	if ((S1 =/= skip) /\ (S2 =/= skip)) .
+	ceq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) 
+	if ((S1 =/= skip) /\ (S2 =/= skip)) .
+	eq [repl-while] : (S ^) [ G / PH] = ( S [ G / PH ] ) ^ .
+	eq [repl-while] : (S ^) [ B / PH] = ( S [ B / PH ] ) ^ .
+endm)
+
+(mod SIMPLIFIED-ABSTRACT-MACHINE-NOTATION is
+    inc GSL-SEMANTICS .
+	sort NeSubstitutionSet .
+	subsort Substitution < NeSubstitutionSet .
+
+	op BEGIN_END : Substitution -> Substitution .
+	op PRE_THEN_END : Predicate Substitution -> Substitution .
+	op IF_THEN_ELSE_END : Predicate Substitution Substitution -> Substitution .
+	op IF_THEN_END : Predicate Substitution -> Substitution .
+	op _:=`bool`(_`) : Variable Predicate -> Substitution .
+	op _OR_ : NeSubstitutionSet NeSubstitutionSet -> NeSubstitutionSet [assoc comm] .
+	op CHOICE_END : NeSubstitutionSet -> Substitution .
+	op ANY_WHERE_THEN_END : PlaceHolder Predicate Substitution -> Substitution .
+	op SELECT_THEN_END : Predicate Substitution -> Substitution .
+	op WHILE_DO_END : Predicate Substitution -> Substitution .
+	op _||_ : Substitution Substitution -> Substitution [assoc comm] .
+
+	vars S T U : Substitution . var SS : NeSubstitutionSet . var P : Predicate . vars X V1 V2 : Variable .
+	var PH : PlaceHolder . var VL : VarList . var EL : ExpList . vars E1 E2 : Expression .
+
+	eq BEGIN S END = S .
+	eq PRE P THEN S END = P | S .
+	eq IF P THEN S ELSE T END = (P ==> S) [] (neg(P) ==> S) .
+	eq IF P THEN S END = IF P THEN S ELSE skip END .
+	eq X := bool ( P ) = IF P THEN (X := true) ELSE (X := false) END .
+	eq CHOICE SS END = SS .
+	eq S OR T = S [] T .	
+	eq S OR (T OR SS) = S [] (T OR SS) .
+	eq ANY PH WHERE P THEN S END = (@ PH . (P ==> S)) .
+	eq SELECT P THEN S END = P ==> S .
+	eq WHILE P DO S END = ((P ==> S)^);(neg(P) ==> S) .
+	eq (V1 := E1) || (V2 := E2) = (V1 (V2)) := (E1 (E2)) .
+	eq (V1 := E1) || (VL := EL) = (V1 (VL)) := (E1 (EL)) .
+	eq T || (P | S) = P | (T || S) .
+	eq S || (T [] U) = (S || T) [] (S || U) .
+	eq S || (T [] (U [] SS)) = (S || T) [] (S || (U [] SS)) .
+	eq S || (P ==> T) = P ==> (S || T) .
+	eq T || (@ PH . (P ==> S)) = (@ PH . (P ==> (T || S))) .
+endm)
+
+(mod B-USER-INTERFACE is 
+	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
+	op `(_eq_`) : Variable Variable -> Predicate .
+	op `(_eq_`) : Variable Expression -> Predicate .
+	op `(_eq_`) : Expression Variable -> Predicate .
+	op `(_<_`) : Variable Expression -> Predicate .
+	op `(_>_`) : Variable Expression -> Predicate .
+	
+	op `(_+_`) : Variable Variable -> Expression .
+	op `(_+_`) : Variable Expression -> Expression .
+	op `(_+_`) : Expression Variable -> Expression .
+	
+	op `(_-_`) : Variable Variable -> Expression .
+	op `(_-_`) : Variable Expression -> Expression .
+	op `(_-_`) : Expression Variable -> Expression .
+	
+	op `(_x_`) : Variable Variable -> Expression .
+	op `(_x_`) : Variable Expression -> Expression .
+	op `(_x_`) : Expression Variable -> Expression .
+	
+	op `(_:=_`) : Variable Variable -> Substitution .
+	
+	vars U V : Variable . var E : Expression .
+	eq (V eq E) = (exp(V) eq E) .
+	eq (V eq U) = (exp(V) eq exp(U)) .
+	eq (E eq V) = (E eq exp(V)) .
+	eq (V < E) = (exp(V) < E) .
+	eq (V > E) = (exp(V) > E) .
+	
+	eq (V + E) = (exp(V) + E) .
+	eq (V + U) = (exp(V) + exp(U)) .
+	eq (E + V) = (E + exp(V)) .
+	
+	eq (V - E) = (exp(V) - E) .
+	eq (V - U) = (exp(V) - exp(U)) .
+	eq (E - V) = (E - exp(V)) .
+	
+	eq (V x E) = (exp(V) x E) .
+	eq (V x U) = (exp(V) x exp(U)) .
+	eq (E x V) = (E x exp(V)) .
+	
+	eq (V := U) = V := exp(U) .
+endm)

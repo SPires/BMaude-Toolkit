@@ -1,0 +1,75 @@
+(mod BAKERY is
+	inc B-USER-INTERFACE .
+	
+	op protocol : Array{Variable,Naturals} Array{Variable,Naturals} -> Substitution .
+	ops tokenList criticResource : -> Variable .
+	ops idle wait crit : -> GSym .
+	op process : -> PlaceHolder .
+	
+	vars A B : Array{Variable,Naturals} .
+
+	--- A - processes array
+	--- B - tokens array
+	
+	eq protocol(A,B) =
+	BEGIN
+		WHILE (true) DO (
+			ANY process 
+			WHERE process in A 
+			THEN (
+				SELECT (A(process) eq idle) 
+				THEN ((B(process) := tokenList) ; ((A(process) := wait) ; (tokenList := (tokenList + s(0))))) END
+			OR
+				SELECT ((A(process) eq wait) and (B(process) eq criticResource)) 
+				THEN (A(process) := crit) END
+			OR
+				SELECT (A(process) eq crit) 
+				THEN ((A(process) := idle) ; (criticResource := (criticResource + s(0)))) END
+			) END
+		)END
+	END .
+endm)
+
+(mod BAKERY-INSTANCE-4 is
+	inc BAKERY .
+	ops stateP1 stateP2 stateP3 stateP4 : -> Variable .	
+	ops tokenP1 tokenP2 tokenP3 tokenP4 : -> Variable .	
+	ops processes tokens : -> Array{Variable,Naturals} .
+	
+	eq processes = (stateP1, 0) ; (stateP2, s(0)) ; (stateP3, s(s(0))) ; (stateP4, s(s(s(0)))) .	
+	eq tokens = (tokenP1, 0) ; (tokenP2, s(0)) ; (tokenP3, s(s(0))) ; (tokenP4, s(s(s(0)))) .
+endm)
+
+(mod BAKERY-SAT is
+	inc BAKERY-INSTANCE-4 .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops idleP1? waitP1? critP1? : -> Prop .
+	ops idleP2? waitP2? critP2? : -> Prop .
+	ops idleP3? waitP3? critP3? : -> Prop .
+	ops idleP4? waitP4? critP4? : -> Prop .
+	var S : Substitution . var STO : Store . var Y : GSym .
+	
+	eq S, (stateP1 |-> Y) STO |= idleP1? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= waitP1? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP1 |-> Y) STO |= critP1? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP2 |-> Y) STO |= idleP2? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= waitP2? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP2 |-> Y) STO |= critP2? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP3 |-> Y) STO |= idleP3? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP3 |-> Y) STO |= waitP3? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP3 |-> Y) STO |= critP3? = if (Y == crit) then true else false fi [variant] .
+	
+	eq S, (stateP4 |-> Y) STO |= idleP4? = if (Y == idle) then true else false fi [variant] .
+	eq S, (stateP4 |-> Y) STO |= waitP4? = if (Y == wait) then true else false fi [variant] .
+	eq S, (stateP4 |-> Y) STO |= critP4? = if (Y == crit) then true else false fi [variant] .
+endm)
+
+--- Safety property
+(lmc protocol(processes,tokens), STO:Store |= [] ~((critP1? /\ critP2?) \/ (critP1? /\ critP3?) \/ (critP1? /\ critP4?) \/ (critP2? /\ critP3?) \/ (critP2? /\ critP4?) \/ (critP3? /\ critP4?)) .)
+
+--- Liveness property
+(lmc protocol(processes,tokens), STO:Store |= [] ((waitP1? -> <> critP1?) /\ (waitP2? -> <> critP2?) /\ (waitP3? -> <> critP3?) /\ (waitP4? -> <> critP4?)) .)
