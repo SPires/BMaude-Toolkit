@@ -1,0 +1,43 @@
+(mod ALTERNATING-BIT is
+	inc B-USER-INTERFACE .
+	
+	op alternating : -> Substitution .
+	ops tag-sen tag-rec tag-mes tag-ack : -> Variable .
+		
+	eq alternating =
+	BEGIN
+		WHILE (true) DO (
+			SELECT ((exp(tag-sen) eq true) and (exp(tag-ack) eq true) ) THEN ((tag-sen := false) ; (tag-mes := false)) END
+			OR
+			SELECT ((exp(tag-sen) eq false) and (exp(tag-ack) eq false)) THEN ((tag-sen := true) ; (tag-mes := true)) END
+			OR
+			SELECT ((exp(tag-mes) eq true) and (exp(tag-rec) eq false)) THEN ((tag-rec := true) ; (tag-ack := true)) END
+			OR
+			SELECT ((exp(tag-mes) eq false) and (exp(tag-rec) eq true)) THEN ((tag-rec := false) ; (tag-ack := false)) END
+		) END
+	END .
+endm)
+
+(mod ALTERNATING-BIT-SAT is
+	inc ALTERNATING-BIT .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops messageSent? messageReceived? : -> Prop .
+	ops ackSent? ackReceived? : -> Prop .
+	op stuck? : -> Prop .
+	var S : Substitution .
+	
+	vars B1 B2 : GBool .
+	
+	eq S , (tag-sen |-> B1) (tag-rec |-> B2) (tag-mes |-> B2) (tag-ack |-> B2) |= stuck? = if (B1 =/= B2) then true else false fi [variant] .
+	eq S , (tag-sen |-> B1) (tag-mes |-> B2) STO:Store |= messageSent? = if (B1 =/= B2) then true else false fi [variant] .
+	eq S , (tag-rec |-> B1) (tag-mes |-> B2) STO:Store |= messageReceived? = if (B1 == B2) then true else false fi [variant] .
+	eq S , (tag-rec |-> B1) (tag-ack |-> B2) STO:Store |= ackSent? = if (B1 == B2) then true else false fi [variant] .
+	eq S , (tag-ack |-> B1) (tag-sen |-> B2) STO:Store |= ackReceived? = if (B1 =/= B2) then true else false fi [variant] . 
+endm)
+
+(lmc alternating, (tag-sen |-> G1:GBool) (tag-mes |-> G2:GBool) (tag-rec |-> G3:GBool) (tag-ack |-> G4:GBool) |= <> stuck? .)
+(lmc alternating, (tag-sen |-> false) (tag-mes |-> false) (tag-rec |-> false) (tag-ack |-> false) |= <> stuck? .)
+(lmc alternating, (tag-sen |-> G1:GBool) (tag-mes |-> G2:GBool) (tag-rec |-> G3:GBool) (tag-ack |-> G4:GBool) |= [] (messageSent? -> [] ackReceived?) .)
+(lmc alternating, (tag-sen |-> false) (tag-mes |-> false) (tag-rec |-> false) (tag-ack |-> false) |= [] (messageSent? -> [] messageReceived?) .)

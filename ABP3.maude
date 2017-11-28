@@ -1,0 +1,55 @@
+(mod ALTERNATING-BIT is
+	inc B-USER-INTERFACE .
+	
+	op alternating : -> Substitution .
+	ops tag-sen tag-rec tag-mes tag-ack : -> Variable .
+	ops canSendMessage canSendAck : -> Variable . 
+		
+	eq alternating =
+	BEGIN
+		WHILE (true) DO (
+			SELECT (pred(tag-sen) or pred(tag-ack)) THEN ((canSendMessage := true) ; (tag-sen := neg(pred(tag-sen)))) END
+			OR
+			SELECT (pred(tag-mes) or pred(tag-rec)) THEN ((canSendAck := true) ; (tag-rec := neg(pred(tag-rec)))) END
+			OR
+			SELECT (pred(canSendMessage)) THEN ((tag-mes := neg(pred(tag-mes))) ; (canSendMessage := neg(pred(canSendMessage)))) END
+			OR
+			SELECT (pred(canSendAck)) THEN ((tag-ack := neg(pred(tag-ack))) ; (canSendAck := neg(pred(canSendAck)))) END
+			OR
+			SELECT (pred(canSendMessage)) THEN (canSendMessage := neg(pred(canSendMessage))) END
+			OR
+			SELECT (pred(canSendAck)) THEN (canSendAck := neg(pred(canSendAck))) END
+			OR
+			SELECT (neg(pred(tag-sen)) and pred(tag-mes) and pred(tag-rec) and pred(tag-ack)) THEN (canSendMessage := neg(pred(canSendMessage))) END
+			OR
+			SELECT (pred(tag-sen) and neg(pred(tag-mes)) and neg(pred(tag-rec)) and neg(pred(tag-ack))) THEN (canSendMessage := neg(pred(canSendMessage))) END
+			OR
+			SELECT (pred(tag-sen) and neg(pred(tag-mes)) and neg(pred(tag-rec)) and pred(tag-ack)) THEN (canSendAck := neg(pred(canSendAck))) END
+			OR
+			SELECT (neg(pred(tag-sen)) and pred(tag-mes) and pred(tag-rec) and neg(pred(tag-ack))) THEN (canSendAck := neg(pred(canSendAck))) END
+		) END
+	END .
+endm)
+
+(mod ALTERNATING-BIT-SAT is
+	inc ALTERNATING-BIT .
+	inc SYMBOLIC-CHECKER .
+	subsort Conf < State .
+	
+	ops messageSent? messageReceived? : -> Prop .
+	ops ackSent? ackReceived? : -> Prop .
+	op stuck? : -> Prop .
+	var S : Substitution .
+	
+	vars B1 B2 : GBool .
+	
+	eq S , (tag-sen |-> B1) (tag-rec |-> B2) (tag-mes |-> B2) (tag-ack |-> B2) |= stuck? = if (B1 =/= B2) then true else false fi [variant] .
+	eq S , (tag-sen |-> B1) (tag-mes |-> B2) STO:Store |= messageSent? = if (B1 =/= B2) then true else false fi [variant] .
+	eq S , (tag-rec |-> B1) (tag-mes |-> B2) STO:Store |= messageReceived? = if (B1 == B2) then true else false fi [variant] .
+	eq S , (tag-rec |-> B1) (tag-ack |-> B2) STO:Store |= ackSent? = if (B1 == B2) then true else false fi [variant] .
+	eq S , (tag-ack |-> B1) (tag-sen |-> B2) STO:Store |= ackReceived? = if (B1 =/= B2) then true else false fi [variant] .  
+endm)
+
+(lmc alternating, (tag-sen |-> G1:GBool) (tag-mes |-> G2:GBool) (tag-rec |-> G3:GBool) (tag-ack |-> G4:GBool) (canSendMessage |-> G5:GBool) (canSendAck |-> G6:GBool) |= [] (messageSent? /\ (messageSent? -> <> ~ ackReceived?)) .)
+(lmc alternating, (tag-sen |-> false) (tag-mes |-> false) (tag-rec |-> false) (tag-ack |-> false) (canSendMessage |-> false) (canSendAck |-> false) |= <> ~ (messageSent? -> [] messageReceived?) .)
+(lmc alternating, (tag-sen |-> false) (tag-mes |-> false) (tag-rec |-> false) (tag-ack |-> false) (canSendMessage |-> false) (canSendAck |-> false) |= <> ~ (messageSent? -> <> ~ ackReceived?) .)

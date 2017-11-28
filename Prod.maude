@@ -1,0 +1,44 @@
+(mod PRODUCER-CONSUMER is
+	inc B-USER-INTERFACE .
+	
+	ops canConsume canProduce consuming producing : -> Variable .
+	op buffer : -> Variable .
+	op protocol : GNat -> Substitution .
+	
+	var bufferLenght : GNat .
+	
+	eq protocol(bufferLenght) =
+	BEGIN
+		WHILE (true) DO (
+			SELECT (buffer eq 0) THEN ((canConsume := false) ; (canProduce := true)) END
+			OR
+			SELECT (buffer eq bufferLenght) THEN ((canConsume := true) ; (canProduce := false)) END
+			OR
+			SELECT (pred(canConsume)) THEN (buffer := exp(buffer) - s(0)) END
+			OR
+			SELECT (pred(canProduce)) THEN (buffer := exp(buffer) + s(0)) END
+			OR
+			SELECT ((buffer > 0) and (buffer < bufferLenght)) THEN ((canConsume := false) ; (canProduce := true)) END
+			OR
+			SELECT ((buffer > 0) and (buffer < bufferLenght)) THEN ((canConsume := true) ; (canProduce := false)) END
+		) END
+	END .
+endm)
+
+(mod PRODUCER-CONSUMER-SAT is
+	inc SYMBOLIC-CHECKER .
+	inc PRODUCER-CONSUMER .
+	subsort Conf < State .
+	
+	ops producing? consuming? bufferEmpty? bufferFull? : -> Prop .
+	var S : Substitution . var STO : Store .
+	
+	eq S , (buffer |-> N:GNat) STO |= bufferFull? = if (N:GNat == s(s(s(s(s(0)))))) then true else false fi [variant] .
+	eq S , (buffer |-> N:GNat) STO |= bufferEmpty? = if (N:GNat == 0) then true else false fi [variant] .
+	eq S , (canConsume |-> B:GBool) STO |= consuming? = if (B:GBool == true) then true else false fi [variant] .
+	eq S , (canProduce |-> B:GBool) STO |= producing? = if (B:GBool == true) then true else false fi [variant] .
+endm)
+
+(lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> (consuming? /\ producing?) .)
+(lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> ~ (consuming? -> ~ bufferEmpty?) .)
+(lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (lenght |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> ~ (producing? -> ~ bufferFull?) .)
