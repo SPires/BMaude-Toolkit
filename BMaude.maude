@@ -4,7 +4,6 @@ set verbose on .
 (fmod GSL-VARIABLE is
 	sort Variable PlaceHolder .
 endfm)
-
 (fmod GNAT is 
 	sort GNat .
 	op 0 : -> GNat .
@@ -20,11 +19,9 @@ endfm)
 	eq G x 0 = 0 .
 	eq G1 x s(G2) = G1 + (G1 x G2) .
 endfm)
-
 (fmod GSL-SYMBOL is
 	sort GSym .
 endfm)
-
 (fmod GSL-EXPRESSION is
 	inc GNAT .
 	inc GSL-SYMBOL .
@@ -36,7 +33,6 @@ endfm)
 	op _-_ : Expression Expression -> Expression .
 	op _x_ : Expression Expression -> Expression [assoc comm] .
 endfm)
-
 (fmod GBOOL is
 	sort GBool .
 	ops true false : -> GBool .
@@ -55,15 +51,12 @@ endfm)
 (view Naturals from DEFAULT to GNAT is
 	sort Elt to GNat .
 endv)
-
 (view Natural from TRIV to GNAT is
 	sort Elt to GNat .
 endv)
-
 (view Variable from TRIV to GSL-VARIABLE is
 	sort Elt to Variable .
 endv)
-
 (fmod GSL-ARRAYS is
 	inc ARRAY{Variable,Naturals}*(op _|->_ to _`,_) .
 	inc ARRAY{Natural,Naturals}*(op _|->_ to _`,_) .
@@ -121,13 +114,11 @@ endfm)
 	eq G1 in ((V,G1) ; A) = true .
 	eq G1 in A = false [owise] .
 endfm)
-
 (fmod GSL-CONVERSION is
 	inc GSL-VARIABLE . inc GSL-EXPRESSION . inc GSL-PREDICATE .
 	op exp : Variable -> Expression .
 	op pred : Variable -> Predicate .
 endfm)
-
 (fmod GSL-LISTS is
 	inc GSL-CONVERSION .
 	sorts VarList ExpList .
@@ -164,12 +155,11 @@ endfm)
 	op @_._ : PlaceHolder Substitution -> UChoice [ctor] .
 	
 	--- Loop Substitution
-	op _^ : Substitution -> Substitution [ctor] .
+	op loop : Predicate Substitution Predicate -> Substitution [ctor] .
 	
 	--- Sequential composition
 	op _;_ : Substitution Substitution -> Substitution [strat(1 0) ctor id: skip] .
 endfm)
-
 (fmod GSL-STORE is 
 	inc GSL-VARIABLE .
 	inc GNAT . inc GSL-SYMBOL . inc GBOOL .
@@ -191,7 +181,6 @@ endfm)
 	eq (V |-> B)  (V |-> B)  S = (V |-> B)  S .
 	eq (V |-> Y)  (V |-> Y)  S = (V |-> Y)  S .
 endfm)
-
 (mod GSL-SEMANTICS is
 	inc GSL-SYNTAX .
 	inc GSL-STORE .
@@ -217,6 +206,7 @@ endfm)
 	vars V V1 V2 : Variable . vars E E1 E2 : Expression . vars STO STO' : Store . vars G G1 G2 : GNat .
 	vars P P1 P2 : Predicate . vars S S1 S2 : Substitution . var PH : PlaceHolder . vars B B1 B2 : GBool .
 	vars Y Y1 Y2 : GSym . var VL : VarList . var EL : ExpList . var A : Array{Variable,Naturals} .
+	var N : Array{Natural,Naturals} .
 	
 	eq [multi1] : (((V VL := E EL) ; S) , STO) = (E, ([ (V VL := E EL) | STO ] ; S) , STO) [variant] .
 	eq [multi1] : (([ (V VL := E EL) | STO ] ; S) , STO') = (E, ([ (V VL := E EL) | STO ] ; S) , STO') [variant] .
@@ -229,6 +219,18 @@ endfm)
 	eq [multi2] : (E1 - exp(V1), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (E1 - G1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
 	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (G1 eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
 	eq [multi2] : (exp(V1) eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') = (Y1 eq E1, ([ (V VL := E EL) | (V1 |-> Y1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(A(exp(V1))), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (exp(A(G1)), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : ((N(exp(V1))), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = ((N(G1)), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(A(exp(V1))) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (exp(A(G1)) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(A(exp(V1))) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (exp(A(G1)) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(A(exp(V1))) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (exp(A(G1)) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (E1 - exp(A(exp(V1))), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (E1 - exp(A(G1)), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (exp(A(exp(V1))) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (exp(A(G1)) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : ((N(exp(V1))) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = ((N(G1)) + E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : ((N(exp(V1))) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = ((N(G1)) x E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : ((N(exp(V1))) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = ((N(G1)) - E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : (E1 - (N(exp(V1))), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = (E1 - (N(G1)), ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
+	eq [multi2] : ((N(exp(V1))) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') = ((N(G1)) eq E1, ([ (V VL := E EL) | (V1 |-> G1) STO ] ; S) , STO') [variant] .
 	eq [multi3] : (G1, ([ (V VL := E EL) | STO ] ; S) , (V |-> G2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> G1) STO') [variant] .
 	eq [multi3] : (G1, ([ (V := E) | STO ] ; S) , (V |-> G2) STO') = (([ skip | STO ] ; S) , (V |-> G1) STO') [variant] .
 	eq [multi3] : (B1, ([ (V VL := E EL) | STO ] ; S) , (V |-> B2) STO') = (([ (VL := EL) | STO ] ; S) , (V |-> B1) STO') [variant] .
@@ -238,13 +240,27 @@ endfm)
 	eq [multi4] : (([ skip | STO ] ; S), STO') = (S, STO') [variant] .
 	
 	eq [simple1] : (((V := E) ; S) , STO) = (E, ((V := E) ; S) , STO)  [variant] .
+	eq [simple2] : (E, ((A(exp(V1)) := E) ; S) , ((V1 |-> G) STO)) = (E, ((A(G) := E) ; S) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> G) STO)) = (G, ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (neg(exp(V1)), ((V2 := E) ; S) , ((V1 |-> B) STO)) = (neg(B), ((V2 := E) ; S) , ((V1 |-> B) STO)) [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> B) STO)) = (B, ((V2 := E) ; S) , ((V1 |-> B) STO)) [variant] .
 	eq [simple2] : (exp(V1), ((V2 := E) ; S) , ((V1 |-> Y) STO)) = (Y, ((V2 := E) ; S) , ((V1 |-> Y) STO)) [variant] .
+	eq [simple2] : (exp(A(exp(V1))), ((V2 := E) ; S) , ((V1 |-> G) STO)) = (exp(A(G)), ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : ((N(exp(V1))), ((V2 := E) ; S) , ((V1 |-> G) STO)) = ((N(G)), ((V2 := E) ; S) , ((V1 |-> G) STO)) [variant] .
 	eq [simple2] : (exp(V1) + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (exp(V1) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (E1 - exp(V1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
-	eq [simple2] : (exp(V1) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - exp(V1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (E1 - G, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(V1) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (G x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(A(exp(V1))) , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (exp(A(G)), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(A(exp(V1))) + E1 , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (exp(A(G)) + E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(A(exp(V1))) - E1 , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (exp(A(G)) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - exp(A(exp(V1))) , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (E1 - exp(A(G)), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (exp(A(exp(V1))) x E1 , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (exp(A(G)) x E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (N(exp(V1)), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (N(G), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (((N(exp(V1))) + (E1)), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (((N(G)) + E1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (N(exp(V1)) - E1 , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (N(G) - E1, ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (E1 - N(exp(V1)) , ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (E1 - N(G), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] .
+	eq [simple2] : (((N(exp(V1))) x E1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) = (((N(G)) x E1), ((V2 := E2) ; S) , ((V1 |-> G) STO)) [variant] . 
 	eq [simple3] : (G1, ((V := E) ; S) , ((V |-> G2) STO)) = (S , ((V |-> G1) STO)) [variant] .
 	eq [simple3] : (G1, (V := E) , ((V |-> G2) STO)) = (skip , ((V |-> G1) STO)) [variant] .
 	eq [simple3] : (B1, ((V := E) ; S) , ((V |-> B2) STO)) = (S , ((V |-> B1) STO)) [variant] .
@@ -254,6 +270,15 @@ endfm)
 
 	eq [pre1] : (((P | S) ; S1) , STO) = (P , ((P | S) ; S1) , STO) [variant] .
 	eq [pre2] : ((exp(V1) eq E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((neg(exp(V1) eq E)), ((P | S) ; S1), ((V1 |-> G) STO)) = ((neg(G eq E)), ((P | S) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((neg(exp(V1) eq E) and P1), ((P | S) ; S1), ((V1 |-> G) STO)) = ((neg(G eq E) and P1), ((P | S) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((neg(exp(V1) eq E) and P1), ((P | S) ; S1), ((V1 |-> Y) STO)) = ((neg(Y eq E) and P1), ((P | S) ; S1), ((V1 |-> Y) STO)) [variant] .
+	eq [pre2] : ((pred(V1) and P1), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((B and P1), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [pre2] : ((pred(V1) or P1), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((B or P1), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [pre2] : ((neg(pred(V1)) and P1), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((neg(B) and P1), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [pre2] : ((neg(pred(V1)) or P1), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((neg(B) or P1), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [pre2] : ((neg(pred(V1) and P1)), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((neg(B and P1)), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [pre2] : ((neg(pred(V1) or P1)), ((P | S) ; S1) , ((V1 |-> B) STO)) = ((neg(B or P1)), ((P | S) ; S1) , ((V1 |-> B) STO)) [variant] .
 	eq [pre2] : ((exp(V1) <= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G <= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre2] : ((exp(V1) < E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G < E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre2] : ((exp(V1) > E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (G > E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
@@ -266,6 +291,32 @@ endfm)
 	eq [pre2] : ((E < exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E < G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre2] : ((E > exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E > G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre2] : ((E >= exp(V1)), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E >= G, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) eq E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (exp(A(G)) eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) <= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (exp(A(G)) <= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) < E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (exp(A(G)) < E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) > E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (exp(A(G)) > E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) >= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = (exp(A(G)) >= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) <= exp(A(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (exp(A(G)) <= G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) < exp(A(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (exp(A(G)) < G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) > exp(A(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (exp(A(G)) > G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((exp(A(exp(V1))) >= exp(A(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = (exp(A(G)) >= G1, ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((E <= exp(A(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E <= exp(A(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E < exp(A(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E < exp(A(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E > exp(A(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E > exp(A(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E >= exp(A(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E >= exp(A(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) eq E), ((P | S) ; S1) , ((V1 |-> G) STO)) = ((N(G)) eq E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) <= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = ((N(G)) <= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) < E), ((P | S) ; S1) , ((V1 |-> G) STO)) = ((N(G)) < E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) > E), ((P | S) ; S1) , ((V1 |-> G) STO)) = ((N(G)) > E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) >= E), ((P | S) ; S1) , ((V1 |-> G) STO)) = ((N(G)) >= E, ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) <= (N(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G)) <= (N(G1)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) < (N(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G)) < (N(G1)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) > (N(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G)) > (N(G1)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : (((N(exp(V1))) >= (N(exp(V2)))), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G)) >= (N(G1)), ((P | S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [pre2] : ((E <= (N(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E <= (N(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E < (N(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E < (N(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E > (N(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E > (N(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [pre2] : ((E >= (N(exp(V1)))), ((P | S) ; S1) , ((V1 |-> G) STO)) = (E >= (N(G)), ((P | S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [pre3] : (true, ((P | S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
 	eq [pre4] : (false, ((P | S) ; S1) , STO) = (S1 , STO) [variant] .
 	eq [pre3] : (true, P | S , STO) = (S , STO) [variant] .
@@ -273,10 +324,51 @@ endfm)
 
 	rl [bchoice] : S1 [] S2 => S1 .
 	
-	eq [loop] : (S)^ = (S ; (S ^)) [] skip .
+	eq [loop1] : ((loop(P,S,P) ; S1), STO) = (P, (loop(P,S,P) ; S1), STO) [variant] .
+	eq [loop2] : ((exp(V1) eq E), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = ((G eq E), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : ((exp(V1) eq E), (loop(P,S,P) ; S1), ((V1 |-> Y) STO)) = ((Y eq E), (loop(P,S,P) ; S1), ((V1 |-> Y) STO)) [variant] .
+	eq [loop2] : ((pred(V1) and P1), (loop(P,S,P) ; S1), ((V1 |-> B1) STO)) = ((B1 and P1), (loop(P,S,P) ; S1), ((V1 |-> B1) STO)) [variant] .
+	eq [loop2] : ((pred(V1) or P1), (loop(P,S,P) ; S1), ((V1 |-> B1) STO)) = ((B1 or P1), (loop(P,S,P) ; S1), ((V1 |-> B1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) eq E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G eq E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) < E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G < E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) <= E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G <= E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) > E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G > E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) >= E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G >= E1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 < exp(V1)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 < G) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 <= exp(V1)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 <= G) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 > exp(V1)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 > G) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 >= exp(V1)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 >= G) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) < exp(V2)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G < G1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) <= exp(V2)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G <= G1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) > exp(V2)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G > G1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) >= exp(V2)) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G >= G1) and P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) eq E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G eq E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) < E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G < E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) <= E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G <= E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) > E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G > E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) >= E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((G >= E1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 < exp(V1)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 < G) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 <= exp(V1)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 <= G) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 > exp(V1)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 > G) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((E1 >= exp(V1)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) = (((E1 >= G) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [loop2] : (((exp(V1) < exp(V2)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G < G1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) <= exp(V2)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G <= G1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) > exp(V2)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G > G1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop2] : (((exp(V1) >= exp(V2)) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) = (((G >= G1) or P1), (loop(P,S,P) ; S1), ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [loop3] : (true, (loop(P,S,P) ; S1), STO) = ((S ; (loop(P,S,P) ; S1)), STO) [variant] .
+	eq [loop3] : (false, (loop(P,S,P) ; S1), STO) = (S1, STO) [variant] .
 
 	eq [guard1] : (((P ==> S) ; S1) , STO) = (P , ((P ==> S) ; S1) , STO) [variant] .
 	eq [guard2] : ((exp(V1) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((neg(exp(V1) eq E)), ((P ==> S) ; S1), ((V1 |-> G) STO)) = ((neg(G eq E)), ((P ==> S) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((neg(exp(V1) eq E) and P1), ((P ==> S) ; S1), ((V1 |-> G) STO)) = ((neg(G eq E) and P1), ((P ==> S) ; S1), ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((neg(exp(V1) eq E) and P1), ((P ==> S) ; S1), ((V1 |-> Y) STO)) = ((neg(Y eq E) and P1), ((P ==> S) ; S1), ((V1 |-> Y) STO)) [variant] .
+	eq [guard2] : ((pred(V1) and P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((B and P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [guard2] : ((pred(V1) or P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((B or P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [guard2] : ((neg(pred(V1)) and P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((neg(B) and P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [guard2] : ((neg(pred(V1)) or P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((neg(B) or P1), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [guard2] : ((neg(pred(V1) and P1)), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((neg(B and P1)), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
+	eq [guard2] : ((neg(pred(V1) or P1)), ((P ==> S) ; S1) , ((V1 |-> B) STO)) = ((neg(B or P1)), ((P ==> S) ; S1) , ((V1 |-> B) STO)) [variant] .
 	eq [guard2] : ((exp(V1) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard2] : ((exp(V1) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard2] : ((exp(V1) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((G > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
@@ -288,7 +380,33 @@ endfm)
 	eq [guard2] : ((E < exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E < G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard2] : ((E <= exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E <= G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard2] : ((E > exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E > G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
-	eq [guard2] : ((E >= exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E >= G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E >= exp(V1)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E >= G), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .	
+	eq [guard2] : ((exp(A(exp(V1))) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((exp(A(G)) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((exp(A(G)) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((exp(A(G)) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((exp(A(G)) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((exp(A(G)) >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) < exp(A(exp(V2)))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((exp(A(G)) < exp(A(G1))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) <= exp(A(exp(V2)))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((exp(A(G)) <= exp(A(G1))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) > exp(A(exp(V2)))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((exp(A(G)) > exp(A(G1))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((exp(A(exp(V1))) >= exp(A(exp(V2)))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((exp(A(G)) >= exp(A(G1))), ((P ==> S) ; S1) , ((V1 |-> G) (V2  |-> G1) STO)) [variant] .
+	eq [guard2] : ((E < exp(A(exp(V1)))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E < exp(A(G))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E <= exp(A(exp(V1)))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E <= exp(A(G))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E > exp(A(exp(V1)))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E > exp(A(G))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E >= exp(A(exp(V1)))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E >= exp(A(G))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : (((N(exp(V1))) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = (((N(G)) eq E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((N(G) < E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((N(G) <= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((N(G) > E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((N(G) >= E), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) < N(exp(V2))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G) < N(G1)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) <= N(exp(V2))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G) <= N(G1)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) > N(exp(V2))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G) > N(G1)), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) [variant] .
+	eq [guard2] : ((N(exp(V1)) >= N(exp(V2))), ((P ==> S) ; S1) , ((V1 |-> G) (V2 |-> G1) STO)) = ((N(G) >= N(G1)), ((P ==> S) ; S1) , ((V1 |-> G) (V2  |-> G1) STO)) [variant] .
+	eq [guard2] : ((E < N(exp(V1))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E < N(G)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E <= N(exp(V1))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E <= N(G)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E > N(exp(V1))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E > N(G)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
+	eq [guard2] : ((E >= N(exp(V1))), ((P ==> S) ; S1) , ((V1 |-> G) STO)) = ((E >= N(G)), ((P ==> S) ; S1) , ((V1 |-> G) STO)) [variant] .
 	eq [guard3] : (true, ((P ==> S) ; S1) , STO) = ((S ; S1) , STO) [variant] .
 	eq [guard4] : (false, ((P ==> S) ; S1) , STO) = (S1, STO) [variant] .
 	eq [guard3] : (true, (P ==> S) , STO) = (S , STO) [variant] .
@@ -331,14 +449,13 @@ endfm)
 	eq [repl-great] : (E > PH) [ G / PH ] = (E [ G / PH ]) > G .
 	eq [repl-in] : (PH in A) [ G / PH ] = G in A .
 	eq [repl-array] : A(PH) [ G / PH ] = A((PH [ G / PH ])) .
+	eq [repl-array] : A(PH + G1) [ G / PH ] = A((PH [ G / PH ]) + G1) .
 	eq [repl-array] : V [ G / PH ] = V [owise] .
 	eq [repl-array] : V [ B / PH ] = V [owise] .
 	ceq [repl-seq-comp] : (S1 ; S2) [ G / PH ] = (S1 [ G / PH ]) ; ((S2 [ G / PH ])) 
 	if ((S1 =/= skip) /\ (S2 =/= skip)) .
 	ceq [repl-seq-comp] : (S1 ; S2) [ B / PH] = (S1 [ B / PH]) ; (S2 [ B / PH]) 
 	if ((S1 =/= skip) /\ (S2 =/= skip)) .
-	eq [repl-while] : (S ^) [ G / PH] = ( S [ G / PH ] ) ^ .
-	eq [repl-while] : (S ^) [ B / PH] = ( S [ B / PH ] ) ^ .
 endm)
 
 (mod SIMPLIFIED-ABSTRACT-MACHINE-NOTATION is
@@ -371,7 +488,7 @@ endm)
 	eq S OR (T OR SS) = S [] (T OR SS) .
 	eq ANY PH WHERE P THEN S END = (@ PH . (P ==> S)) .
 	eq SELECT P THEN S END = P ==> S .
-	eq WHILE P DO S END = ((P ==> S)^);(neg(P) ==> S) .
+	eq WHILE P DO S END = loop(P,S,P) .
 	eq (V1 := E1) || (V2 := E2) = (V1 (V2)) := (E1 (E2)) .
 	eq (V1 := E1) || (VL := EL) = (V1 (VL)) := (E1 (EL)) .
 	eq T || (P | S) = P | (T || S) .
@@ -380,7 +497,6 @@ endm)
 	eq S || (P ==> T) = P ==> (S || T) .
 	eq T || (@ PH . (P ==> S)) = (@ PH . (P ==> (T || S))) .
 endm)
-
 (mod B-USER-INTERFACE is 
 	inc SIMPLIFIED-ABSTRACT-MACHINE-NOTATION .
 	op `(_eq_`) : Variable Variable -> Predicate .
@@ -388,39 +504,31 @@ endm)
 	op `(_eq_`) : Expression Variable -> Predicate .
 	op `(_<_`) : Variable Expression -> Predicate .
 	op `(_>_`) : Variable Expression -> Predicate .
-	
 	op `(_+_`) : Variable Variable -> Expression .
 	op `(_+_`) : Variable Expression -> Expression .
 	op `(_+_`) : Expression Variable -> Expression .
-	
 	op `(_-_`) : Variable Variable -> Expression .
 	op `(_-_`) : Variable Expression -> Expression .
 	op `(_-_`) : Expression Variable -> Expression .
-	
 	op `(_x_`) : Variable Variable -> Expression .
 	op `(_x_`) : Variable Expression -> Expression .
 	op `(_x_`) : Expression Variable -> Expression .
-	
 	op `(_:=_`) : Variable Variable -> Substitution .
-	
 	vars U V : Variable . var E : Expression .
+	
 	eq (V eq E) = (exp(V) eq E) .
 	eq (V eq U) = (exp(V) eq exp(U)) .
 	eq (E eq V) = (E eq exp(V)) .
 	eq (V < E) = (exp(V) < E) .
 	eq (V > E) = (exp(V) > E) .
-	
 	eq (V + E) = (exp(V) + E) .
 	eq (V + U) = (exp(V) + exp(U)) .
 	eq (E + V) = (E + exp(V)) .
-	
 	eq (V - E) = (exp(V) - E) .
 	eq (V - U) = (exp(V) - exp(U)) .
 	eq (E - V) = (E - exp(V)) .
-	
 	eq (V x E) = (exp(V) x E) .
 	eq (V x U) = (exp(V) x exp(U)) .
 	eq (E x V) = (E x exp(V)) .
-	
 	eq (V := U) = V := exp(U) .
 endm)
