@@ -41,4 +41,4 @@ endm)
 
 (lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> (consuming? /\ producing?) .)
 (lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> ~ (consuming? -> ~ bufferEmpty?) .)
-(lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (lenght |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> ~ (producing? -> ~ bufferFull?) .)
+(lmc protocol(s(s(s(s(s(0)))))), ((buffer |-> 0) (canConsume |-> false) (canProduce |-> true)) |= <> ~ (producing? -> ~ bufferFull?) .)
