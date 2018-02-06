@@ -1,3 +1,1 @@
-![LogoUFF](https://raw.githubusercontent.com/SPires/BMaude-Toolkit/master/img/logoUFF1Lpreto.gif)
-
-<img src="img/logoUFF1Lpreto.gif" width="40%">
+<img src="img/logoUFF1Lpreto.gif" width="30%"> <img src="img/logoUFF1Lpreto.gif" width="30%">
