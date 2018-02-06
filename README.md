@@ -10,4 +10,6 @@ Instituto de Computação
 
 ![title](https://github.com/SPires/BMaude-Toolkit/img/logoUFF1Lpreto.gif)
 
+![alt text](https://raw.githubusercontent.com/SPires/BMaude-Toolkit/master/img/logoUFF1Lpreto.gif)
+
 # English
