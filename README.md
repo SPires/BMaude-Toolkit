@@ -10,16 +10,16 @@ Título do Projeto: Refinamento, Abstração e Verificação
 
 Objetivos do projeto:
 
-<br>
-<br>
+Este projeto destina-se ao estudo da aplicação de verificação automática (model checking) de propriedades de segurança descritas em lógica temporal linear a especificações descritos segundo o método B. O processo de verificação se dará por meio da semântica da linguagem subjacente à linguagem de design do método B. Essa semântica possui comportamento de autômatos, o que permite a aplicação de verificação de modelos.
 
-Produção:
+<br>
+<br>
 
 Este repositório contém:
 
-* Um arquivo com um conjunto de operadores de B e sua semântica operacional
+* Um arquivo com um conjunto de operadores de B e sua semântica formal.
 
-* Um simples e didático conjunto de testes
+* Um simples e didático conjunto de testes.
 
 <br>
 <br>
