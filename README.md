@@ -50,7 +50,7 @@ B Method - http://www.methode-b.com/en/b-method/
 <br>
 <br>
 
-* ENGLISH *
+<strong> ENGLISH </strong>
 
 <br>
 <br>
