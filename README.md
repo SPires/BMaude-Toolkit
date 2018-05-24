@@ -88,3 +88,7 @@ Maude System - http://maude.cs.illinois.edu/w/index.php?title=The_Maude_System
 Maude LTL LMC - http://maude.cs.uiuc.edu/tools/lmc/
 
 B Method - http://www.methode-b.com/en/b-method/
+
+<br>
+<br>
+<p align="center"> ------------------X------------------ </p>
