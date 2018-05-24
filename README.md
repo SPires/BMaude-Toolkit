@@ -46,13 +46,11 @@ Maude LTL LMC - http://maude.cs.uiuc.edu/tools/lmc/
 B Method - http://www.methode-b.com/en/b-method/
 
 <br>
-<p align="center"> ------------------X------------------ </p>
 <br>
+<p align="center"> ------------------X------------------ </p>
+
 
 <strong> ENGLISH </strong>
-
-<br>
-<br>
 
 Fundação de Amparo a Pesquisa do Estado do Rio de Janeiro - FAPERJ.
 
