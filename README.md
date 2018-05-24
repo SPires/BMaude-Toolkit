@@ -46,8 +46,7 @@ Maude LTL LMC - http://maude.cs.uiuc.edu/tools/lmc/
 B Method - http://www.methode-b.com/en/b-method/
 
 <br>
-<br>
-<br>
+<center> ------------------X------------------ </center>
 <br>
 
 <strong> ENGLISH </strong>
