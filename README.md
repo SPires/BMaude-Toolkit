@@ -49,7 +49,7 @@ B Method - http://www.methode-b.com/en/b-method/
 <br>
 <p align="center"> ::-----X--::------------------X------------------::--X-----:: </p>
 
------X--::
+
 <strong> ENGLISH </strong>
 
 Fundação de Amparo a Pesquisa do Estado do Rio de Janeiro - FAPERJ.
